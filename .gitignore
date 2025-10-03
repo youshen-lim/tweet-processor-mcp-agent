@@ -1,0 +1,207 @@
+# Tweet Processor - Git Ignore File
+# Prevents sensitive data and temporary files from being committed to version control
+
+# =============================================================================
+# SENSITIVE DATA - NEVER COMMIT THESE!
+# =============================================================================
+
+# Environment variables (contains API keys and secrets)
+.env
+
+# Google Drive credentials (service account JSON)
+credentials/
+credentials/*.json
+
+# Twitter API credentials backup
+twitter_credentials.txt
+
+# Any file containing "secret", "key", or "token" in the name
+*secret*
+*key*.json
+*token*.json
+
+# MCP Agent secrets configuration
+mcp_agent.secrets.yaml
+mcp_agent.secrets.yml
+
+# =============================================================================
+# GENERATED DATA FILES
+# =============================================================================
+
+# Workflow state (contains cached data and current state)
+workflow_state.json
+
+# Generated tweets
+all_tweets.json
+all_tweets_haiku_backup.json
+
+# Tweet pipeline
+tweet_pipeline.json
+tweet_pipeline.md
+
+# Post results
+last_post_result.json
+post_history.json
+
+# =============================================================================
+# PYTHON
+# =============================================================================
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+
+# Virtual environments
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# =============================================================================
+# IDEs & EDITORS
+# =============================================================================
+
+# VS Code
+.vscode/
+*.code-workspace
+
+# PyCharm
+.idea/
+*.iml
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Vim
+*.swp
+*.swo
+*~
+
+# Emacs
+*~
+\#*\#
+.\#*
+
+# =============================================================================
+# OPERATING SYSTEM
+# =============================================================================
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+*.stackdump
+[Dd]esktop.ini
+$RECYCLE.BIN/
+*.lnk
+
+# Linux
+*~
+
+# =============================================================================
+# LOGS & TEMPORARY FILES
+# =============================================================================
+
+# Log files
+*.log
+logs/
+*.log.*
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.backup
+*.old
+
+# Archive files (if you create backups)
+archive/
+backups/
+*.zip
+*.tar.gz
+*.rar
+
+# =============================================================================
+# DOCKER
+# =============================================================================
+
+# Docker volumes
+docker-compose.override.yml
+
+# =============================================================================
+# PROJECT-SPECIFIC
+# =============================================================================
+
+# Test files (if you recreate them)
+test_*.py
+test_results.json
+
+# Development/experimental files
+scratch/
+experiments/
+playground/
+
+# Personal notes
+notes.txt
+TODO.txt
+NOTES.md
+
+# Local configuration overrides
+.env.local
+config.local.json
+
