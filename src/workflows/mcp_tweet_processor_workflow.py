@@ -47,24 +47,71 @@ class MCPTweetProcessorWorkflow:
     def __init__(self, document_id: str = DOCUMENT_ID, mcp_app: MCPApp = None):
         """
         Initialize the workflow.
-        
+
         Args:
             document_id: Google Drive document ID
             mcp_app: Optional MCPApp instance (created if not provided)
         """
         self.document_id = document_id
         self.state = self._load_state()
-        
+
         # Create MCP App if not provided
         if mcp_app is None:
+            # Validate configuration before creating MCP App
+            self._validate_mcp_config()
             self.mcp_app = MCPApp(name="tweet_processor")
         else:
             self.mcp_app = mcp_app
-        
+
         # Agents will be initialized in async context
         self.content_analyzer = None
         self.tweet_composer = None
-        
+
+    def _validate_mcp_config(self):
+        """Validate MCP Agent configuration file."""
+        config_path = 'mcp_agent.config.yaml'
+
+        if not os.path.exists(config_path):
+            raise FileNotFoundError(
+                f"❌ MCP Agent configuration file not found: {config_path}\n"
+                f"📖 This file is required for the MCP Agent Cloud framework.\n"
+                f"💡 Make sure you're running from the correct directory and the file exists."
+            )
+
+        try:
+            import yaml
+            with open(config_path, 'r') as f:
+                config = yaml.safe_load(f)
+        except ImportError:
+            raise ImportError(
+                f"❌ PyYAML library not found!\n"
+                f"📖 PyYAML is required to parse the MCP Agent configuration.\n"
+                f"💡 Install it with: pip install PyYAML"
+            )
+        except yaml.YAMLError as e:
+            raise ValueError(
+                f"❌ Invalid YAML syntax in {config_path}: {str(e)}\n"
+                f"📖 The configuration file contains syntax errors.\n"
+                f"💡 Check the YAML formatting and fix any syntax issues."
+            )
+        except Exception as e:
+            raise ValueError(
+                f"❌ Failed to load {config_path}: {str(e)}\n"
+                f"📖 Could not read the configuration file.\n"
+                f"💡 Check file permissions and content."
+            )
+
+        # Validate required sections
+        required_sections = ['execution_engine', 'logger', 'anthropic']
+        missing_sections = [section for section in required_sections if section not in config]
+
+        if missing_sections:
+            raise ValueError(
+                f"❌ Missing required configuration sections: {', '.join(missing_sections)}\n"
+                f"📖 The MCP Agent configuration is incomplete.\n"
+                f"💡 See mcp_agent.config.yaml for the correct format."
+            )
+
     def _load_state(self) -> Dict[str, Any]:
         """Load workflow state from storage."""
         try:
@@ -134,10 +181,30 @@ class MCPTweetProcessorWorkflow:
                     articles = await self._read_and_parse_document()
                     self.state["articles_cache"] = articles
                     self._save_state()
+
+                    # Validate articles were found
+                    if not articles or len(articles) == 0:
+                        raise ValueError(
+                            f"❌ No articles found in the document!\n"
+                            f"📖 The Google Drive document appears to be empty or improperly formatted.\n"
+                            f"💡 Check that your document ID is correct and the document contains newsletter articles.\n"
+                            f"🔗 Document ID: {self.document_id}"
+                        )
+
                     print(f"✓ Found {len(articles)} articles")
                     logger.info(f"Loaded {len(articles)} articles from Google Drive")
                 else:
                     articles = self.state["articles_cache"]
+
+                    # Validate cached articles
+                    if not articles or len(articles) == 0:
+                        raise ValueError(
+                            f"❌ Cached articles list is empty!\n"
+                            f"📖 The cached articles data appears to be corrupted.\n"
+                            f"💡 Delete workflow_state.json and try again to reload from Google Drive.\n"
+                            f"🔗 Document ID: {self.document_id}"
+                        )
+
                     print(f"✓ Using cached articles ({len(articles)} total)")
                     logger.info(f"Using cached articles: {len(articles)} total")
                 print()
@@ -198,7 +265,22 @@ class MCPTweetProcessorWorkflow:
                     themes=analysis.get('themes', []),
                     num_variations=4
                 )
-                
+
+                # Validate tweet generation results
+                if not tweets or len(tweets) == 0:
+                    raise ValueError(
+                        f"❌ Tweet generation failed: No tweets were generated for article #{current_article_num}\n"
+                        f"📖 This could be due to API issues or content analysis problems.\n"
+                        f"💡 Try running with --preview mode to debug the issue."
+                    )
+
+                if current_variation > len(tweets):
+                    raise ValueError(
+                        f"❌ Tweet variation {current_variation} not available: Only {len(tweets)} variations generated\n"
+                        f"📖 Expected 4 variations but got {len(tweets)}.\n"
+                        f"💡 This could be due to API rate limits or content processing issues."
+                    )
+
                 # Get the specific variation
                 tweet_obj = tweets[current_variation - 1]
                 tweet = {
@@ -379,6 +461,15 @@ class MCPTweetProcessorWorkflow:
             else:
                 articles = self.state["articles_cache"]
 
+            # Validate articles for pipeline generation
+            if not articles or len(articles) == 0:
+                raise ValueError(
+                    f"❌ No articles available for pipeline generation!\n"
+                    f"📖 Cannot generate pipeline without articles.\n"
+                    f"💡 Check your Google Drive document and ensure it contains newsletter articles.\n"
+                    f"🔗 Document ID: {self.document_id}"
+                )
+
             # Get posting schedule
             posting_day = os.getenv('POSTING_DAY', 'Thursday')
             posting_time = os.getenv('POSTING_TIME', '11:30')
@@ -437,6 +528,15 @@ class MCPTweetProcessorWorkflow:
                     themes=analysis.get('themes', []),
                     num_variations=4
                 )
+
+                # Validate tweet generation for pipeline
+                if not tweets or len(tweets) == 0:
+                    print(f"⚠️  Warning: No tweets generated for article #{current_article_num}, skipping week {week + 1}")
+                    continue
+
+                if current_variation > len(tweets):
+                    print(f"⚠️  Warning: Variation {current_variation} not available for article #{current_article_num}, using variation 1")
+                    current_variation = 1
 
                 tweet_obj = tweets[current_variation - 1]
 
