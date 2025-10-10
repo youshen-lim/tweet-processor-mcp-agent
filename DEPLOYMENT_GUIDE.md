@@ -26,8 +26,8 @@ Complete guide for deploying and running the Tweet Processor on your local Windo
 #### **Step 1: Install Dependencies**
 
 ```bash
-# Navigate to project directory
-cd "C:\Users\Youshen\Documents\augment-projects\Tweet Processor using LastMile MCP Agent Cloud"
+# Navigate to your project directory (replace with your actual path)
+cd "path\to\your\tweet-processor-mcp-agent"
 
 # Install required packages
 pip install -r requirements.txt
@@ -162,14 +162,25 @@ pyinstaller --onefile --name TweetProcessor run_tweet_processor.py
 
 #### **Step 1: Create Batch Script**
 
-Create `run_tweet_processor.bat`:
+**Easy Setup (Recommended):**
+
+```batch
+# Copy the portable batch script template
+copy run_tweet_processor.bat.template run_tweet_processor.bat
+
+# The script automatically detects its installation directory - no editing needed!
+```
+
+**Manual Setup (Advanced):**
+
+If you prefer to create the batch script manually, create `run_tweet_processor.bat`:
 
 ```batch
 @echo off
 REM Tweet Processor - Automated Posting Script
 
-REM Set working directory
-cd /d "C:\Users\Youshen\Documents\augment-projects\Tweet Processor using LastMile MCP Agent Cloud"
+REM Set working directory to script location (automatic path detection)
+cd /d "%~dp0"
 
 REM Activate virtual environment (if using one)
 REM call venv\Scripts\activate
@@ -180,6 +191,12 @@ python run_tweet_processor.py --post
 REM Log completion
 echo Tweet posted at %date% %time% >> posting_log.txt
 ```
+
+**Key Features:**
+- ✅ **Automatic path detection** using `%~dp0` (no manual editing required)
+- ✅ **Works from any installation directory**
+- ✅ **Built-in error checking and logging**
+- ✅ **Clear status messages**
 
 #### **Step 2: Configure Task Scheduler**
 
@@ -205,7 +222,12 @@ echo Tweet posted at %date% %time% >> posting_log.txt
    - Click "Actions" tab → "New"
    - Action: "Start a program"
    - Program/script: `C:\Windows\System32\cmd.exe`
-   - Add arguments: `/c "C:\Users\Youshen\Documents\augment-projects\Tweet Processor using LastMile MCP Agent Cloud\run_tweet_processor.bat"`
+   - Add arguments: `/c "path\to\your\tweet-processor-mcp-agent\run_tweet_processor.bat"`
+   - **Start in (optional):** `path\to\your\tweet-processor-mcp-agent`
+
+   **Example:**
+   - Add arguments: `/c "C:\Projects\tweet-processor-mcp-agent\run_tweet_processor.bat"`
+   - Start in: `C:\Projects\tweet-processor-mcp-agent`
 
 5. **Configure Conditions:**
    - Uncheck "Start the task only if the computer is on AC power"
@@ -276,12 +298,97 @@ python scheduler.py
 ```
 
 **Keep scheduler running:**
-- Use Windows Task Scheduler to start `scheduler.py` at system startup
-- Or run in background with `pythonw scheduler.py`
+- **Windows:** Use Task Scheduler to start `scheduler.py` at system startup
+- **macOS/Linux:** Run in background with `nohup python scheduler.py &`
+- **All platforms:** Or run in background with `pythonw scheduler.py` (Windows) / `python scheduler.py &` (macOS/Linux)
 
 ---
 
-### **Option 3: APScheduler (Advanced)**
+### **Option 3: macOS Automation**
+
+**See detailed guide:** [macOS Automator Setup](docs/MACOS_AUTOMATOR_SETUP.md)
+
+**Quick Setup:**
+
+```bash
+# Copy shell script template
+cp run_tweet_processor.sh.template run_tweet_processor.sh
+chmod +x run_tweet_processor.sh
+
+# Test it works
+./run_tweet_processor.sh
+```
+
+**Automation Options:**
+- **Automator + Calendar** (Easiest) - Visual setup with Calendar integration
+- **launchd** (Most reliable) - System-level scheduling
+- **cron** (Traditional) - Unix-style scheduling
+
+---
+
+### **Option 4: Linux Automation**
+
+**Setup Shell Script:**
+
+```bash
+# Copy shell script template
+cp run_tweet_processor.sh.template run_tweet_processor.sh
+chmod +x run_tweet_processor.sh
+
+# Test it works
+./run_tweet_processor.sh
+```
+
+**Setup Cron Job:**
+
+```bash
+# Edit crontab
+crontab -e
+
+# Add this line for every Thursday at 11:30 AM:
+30 11 * * 4 /path/to/your/tweet-processor-mcp-agent/run_tweet_processor.sh
+```
+
+**Setup systemd Timer (Alternative):**
+
+Create `/etc/systemd/user/tweet-processor.service`:
+
+```ini
+[Unit]
+Description=Tweet Processor
+After=network.target
+
+[Service]
+Type=oneshot
+ExecStart=/path/to/your/tweet-processor-mcp-agent/run_tweet_processor.sh
+WorkingDirectory=/path/to/your/tweet-processor-mcp-agent
+```
+
+Create `/etc/systemd/user/tweet-processor.timer`:
+
+```ini
+[Unit]
+Description=Run Tweet Processor weekly
+Requires=tweet-processor.service
+
+[Timer]
+OnCalendar=Thu *-*-* 11:30:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+```
+
+Enable the timer:
+
+```bash
+systemctl --user enable tweet-processor.timer
+systemctl --user start tweet-processor.timer
+```
+
+---
+
+### **Option 5: APScheduler (Advanced)**
 
 Create `advanced_scheduler.py`:
 
@@ -545,9 +652,14 @@ icacls .env /grant:r "%USERNAME%:F"
 
 **Solutions:**
 ```bash
-# Add Python to PATH
-# Or use full path in batch script:
-"C:\Users\Youshen\AppData\Local\Programs\Python\Python39\python.exe" run_tweet_processor.py --post
+# Option 1: Add Python to PATH (recommended)
+# Go to System Properties > Environment Variables > PATH > Add Python installation directory
+
+# Option 2: Use full path in batch script (replace with your Python path):
+"C:\Users\YourUsername\AppData\Local\Programs\Python\Python39\python.exe" run_tweet_processor.py --post
+
+# Option 3: Use py launcher (Windows 10+):
+py run_tweet_processor.py --post
 ```
 
 ---

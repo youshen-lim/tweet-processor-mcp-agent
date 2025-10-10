@@ -1,0 +1,111 @@
+#!/bin/bash
+# =============================================================================
+# Tweet Processor - Automated Posting Script (macOS/Linux)
+# =============================================================================
+#
+# This shell script automatically detects its installation directory and runs
+# the Tweet Processor from any location without requiring manual path editing.
+#
+# SETUP INSTRUCTIONS:
+# 1. Copy this file to: run_tweet_processor.sh
+# 2. Make it executable: chmod +x run_tweet_processor.sh
+# 3. Use the .sh file (not this .template file) for automation
+# 4. No path editing required - it works from any installation directory!
+#
+# CRON SETUP (Linux/macOS):
+# Add to crontab with: crontab -e
+# Example (every Thursday at 11:30 AM):
+# 30 11 * * 4 /path/to/your/tweet-processor-mcp-agent/run_tweet_processor.sh
+#
+# LAUNCHD SETUP (macOS):
+# See docs/MACOS_AUTOMATOR_SETUP.md for detailed instructions
+#
+# =============================================================================
+
+echo ""
+echo "================================================================================"
+echo "🐦 TWEET PROCESSOR - AUTOMATED POSTING"
+echo "================================================================================"
+echo ""
+
+# Set working directory to the script's location (automatic path detection)
+# $(dirname "$0") gets the directory containing this script
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+cd "$SCRIPT_DIR"
+
+echo "📁 Working directory: $PWD"
+echo "⏰ Started at: $(date)"
+echo ""
+
+# Check if required files exist
+if [ ! -f ".env" ]; then
+    echo "❌ ERROR: .env file not found in $PWD"
+    echo "📖 Please copy .env.example to .env and configure your API keys"
+    echo "💡 See SECRETS_SETUP.md for detailed instructions"
+    exit 1
+fi
+
+if [ ! -f "run_tweet_processor.py" ]; then
+    echo "❌ ERROR: run_tweet_processor.py not found in $PWD"
+    echo "📁 Make sure you're running this script from the tweet-processor-mcp-agent directory"
+    exit 1
+fi
+
+if [ ! -f "requirements.txt" ]; then
+    echo "❌ ERROR: requirements.txt not found in $PWD"
+    echo "📁 Make sure you're running this script from the tweet-processor-mcp-agent directory"
+    exit 1
+fi
+
+echo "✅ Environment check passed"
+echo ""
+
+# Activate virtual environment (if using one)
+# Uncomment the next lines if you're using a virtual environment:
+# if [ -f "venv/bin/activate" ]; then
+#     source venv/bin/activate
+#     echo "🔧 Virtual environment activated"
+# fi
+
+# Determine Python command (python3 on most systems, python on some)
+PYTHON_CMD="python3"
+if ! command -v python3 &> /dev/null; then
+    if command -v python &> /dev/null; then
+        PYTHON_CMD="python"
+    else
+        echo "❌ ERROR: Python not found"
+        echo "💡 Please install Python 3.8 or later"
+        exit 1
+    fi
+fi
+
+echo "🐍 Using Python command: $PYTHON_CMD"
+echo ""
+
+# Run tweet processor with posting enabled
+echo "🚀 Running Tweet Processor..."
+$PYTHON_CMD run_tweet_processor.py --post
+
+# Check if the command was successful
+if [ $? -eq 0 ]; then
+    echo ""
+    echo "✅ Tweet Processor completed successfully"
+    echo "📝 Tweet posted at $(date)" >> posting_log.txt
+    echo ""
+    echo "================================================================================"
+    echo "🎉 AUTOMATION COMPLETE"
+    echo "================================================================================"
+    exit 0
+else
+    echo ""
+    echo "❌ Tweet Processor failed with exit code $?"
+    echo "📝 Error at $(date) - Exit code: $?" >> posting_log.txt
+    echo ""
+    echo "================================================================================"
+    echo "❌ AUTOMATION FAILED"
+    echo "================================================================================"
+    echo "📝 Check the error messages above for troubleshooting guidance"
+    echo "📖 See DEPLOYMENT_GUIDE.md for detailed setup instructions"
+    echo "🆘 See SECRETS_SETUP.md if you need help with API configuration"
+    exit 1
+fi

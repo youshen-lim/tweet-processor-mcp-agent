@@ -27,7 +27,13 @@ from agents.mcp_content_analyzer_agent import MCPContentAnalyzerAgent, analyze_a
 from agents.mcp_tweet_composer_agent import MCPTweetComposerAgent, compose_tweets_for_article
 
 # Configuration
-DOCUMENT_ID = "1kZMdOrmI5JZR65jvZbzGZ9VKKvGlLqFO"
+DOCUMENT_ID = os.getenv('GOOGLE_DRIVE_DOCUMENT_ID')
+if not DOCUMENT_ID:
+    raise ValueError(
+        "❌ GOOGLE_DRIVE_DOCUMENT_ID environment variable is not set!\n"
+        "📖 Please set your Google Drive document ID in the .env file.\n"
+        "💡 See SECRETS_SETUP.md for detailed instructions on how to get your document ID."
+    )
 POSTING_SCHEDULE = {
     "day": "Thursday",
     "time": "11:30",

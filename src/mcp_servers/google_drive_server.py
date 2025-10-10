@@ -22,7 +22,12 @@ mcp = Server("google-drive-server")
 
 # Google Drive configuration
 SCOPES = ['https://www.googleapis.com/auth/drive.readonly']
-DOCUMENT_ID = "1kZMdOrmI5JZR65jvZbzGZ9VKKvGlLqFO"
+DOCUMENT_ID = os.getenv('GOOGLE_DRIVE_DOCUMENT_ID')
+if not DOCUMENT_ID:
+    print("⚠️  Warning: GOOGLE_DRIVE_DOCUMENT_ID environment variable is not set.")
+    print("📖 Please set your Google Drive document ID in the .env file.")
+    print("💡 See SECRETS_SETUP.md for detailed instructions.")
+    DOCUMENT_ID = "your_document_id_here"  # Fallback placeholder
 
 
 @dataclass

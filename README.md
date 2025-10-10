@@ -205,8 +205,8 @@ Step 6: State Management
 
 ### **Installation (5 Minutes)**
 
-```powershell
-# 1. Clone the repository
+```bash
+# 1. Clone the repository (works on any platform)
 git clone https://github.com/youshen-lim/tweet-processor-mcp-agent.git
 cd tweet-processor-mcp-agent
 
@@ -224,6 +224,10 @@ cp mcp_agent.secrets.yaml.example mcp_agent.secrets.yaml
 # 5. Test the system
 python run_tweet_processor.py --preview
 ```
+
+**✅ Cross-Platform Support:** Works on Windows, macOS, and Linux
+**✅ Portable Installation:** Runs from any directory without path configuration
+**✅ Automatic Path Detection:** No manual path editing required
 
 **Detailed Setup:** See [SECRETS_SETUP.md](SECRETS_SETUP.md) for step-by-step instructions.
 
@@ -469,16 +473,20 @@ python run_tweet_processor.py --pipeline
 
 ## 🚀 Deployment
 
-### **Local Deployment (Current Setup)**
+### **Local Deployment (Cross-Platform)**
 
-**Windows Desktop Application:**
+**Desktop Application (Windows, macOS, Linux):**
 - Run manually via `python run_tweet_processor.py`
-- Schedule with Windows Task Scheduler (optional)
+- **Windows:** Schedule with Task Scheduler using portable batch scripts
+- **macOS:** Schedule with Automator, launchd, or cron (see [macOS Setup Guide](docs/MACOS_AUTOMATOR_SETUP.md))
+- **Linux:** Schedule with cron or systemd timers
 - Full control over when tweets are generated
 
 **Advantages:**
 - ✅ Complete control over execution
 - ✅ Manual review before posting
+- ✅ Works on any operating system
+- ✅ Portable installation (no hardcoded paths)
 - ✅ No cloud costs
 - ✅ Easy debugging
 

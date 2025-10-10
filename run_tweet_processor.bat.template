@@ -1,0 +1,97 @@
+@echo off
+REM =============================================================================
+REM Tweet Processor - Automated Posting Script (Windows)
+REM =============================================================================
+REM
+REM This batch script automatically detects its installation directory and runs
+REM the Tweet Processor from any location without requiring manual path editing.
+REM
+REM SETUP INSTRUCTIONS:
+REM 1. Copy this file to: run_tweet_processor.bat
+REM 2. Use the .bat file (not this .template file) in Task Scheduler
+REM 3. No path editing required - it works from any installation directory!
+REM
+REM TASK SCHEDULER SETUP:
+REM - Program/script: C:\Windows\System32\cmd.exe
+REM - Add arguments: /c "path\to\your\tweet-processor-mcp-agent\run_tweet_processor.bat"
+REM - Start in: path\to\your\tweet-processor-mcp-agent
+REM
+REM =============================================================================
+
+echo.
+echo ================================================================================
+echo 🐦 TWEET PROCESSOR - AUTOMATED POSTING
+echo ================================================================================
+echo.
+
+REM Set working directory to the script's location (automatic path detection)
+REM %~dp0 expands to the drive and path of the batch file
+cd /d "%~dp0"
+
+echo 📁 Working directory: %CD%
+echo ⏰ Started at: %date% %time%
+echo.
+
+REM Check if required files exist
+if not exist ".env" (
+    echo ❌ ERROR: .env file not found in %CD%
+    echo 📖 Please copy .env.example to .env and configure your API keys
+    echo 💡 See SECRETS_SETUP.md for detailed instructions
+    goto :error
+)
+
+if not exist "run_tweet_processor.py" (
+    echo ❌ ERROR: run_tweet_processor.py not found in %CD%
+    echo 📁 Make sure you're running this script from the tweet-processor-mcp-agent directory
+    goto :error
+)
+
+if not exist "requirements.txt" (
+    echo ❌ ERROR: requirements.txt not found in %CD%
+    echo 📁 Make sure you're running this script from the tweet-processor-mcp-agent directory
+    goto :error
+)
+
+echo ✅ Environment check passed
+echo.
+
+REM Activate virtual environment (if using one)
+REM Uncomment the next line if you're using a virtual environment:
+REM call venv\Scripts\activate
+
+REM Run tweet processor with posting enabled
+echo 🚀 Running Tweet Processor...
+python run_tweet_processor.py --post
+
+REM Check if the command was successful
+if %ERRORLEVEL% EQU 0 (
+    echo.
+    echo ✅ Tweet Processor completed successfully
+    echo 📝 Tweet posted at %date% %time% >> posting_log.txt
+) else (
+    echo.
+    echo ❌ Tweet Processor failed with error code %ERRORLEVEL%
+    echo 📝 Error at %date% %time% - Exit code: %ERRORLEVEL% >> posting_log.txt
+    goto :error
+)
+
+echo.
+echo ================================================================================
+echo 🎉 AUTOMATION COMPLETE
+echo ================================================================================
+goto :end
+
+:error
+echo.
+echo ================================================================================
+echo ❌ AUTOMATION FAILED
+echo ================================================================================
+echo 📝 Check the error messages above for troubleshooting guidance
+echo 📖 See DEPLOYMENT_GUIDE.md for detailed setup instructions
+echo 🆘 See SECRETS_SETUP.md if you need help with API configuration
+pause
+exit /b 1
+
+:end
+REM Script completed successfully
+exit /b 0

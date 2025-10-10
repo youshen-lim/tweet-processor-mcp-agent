@@ -133,6 +133,27 @@ git check-ignore credentials/google-drive-credentials.json
 
 # Search for API keys (should return nothing)
 Get-ChildItem -Path . -Recurse -Include *.py | Select-String -Pattern "sk-ant-api03-" -CaseSensitive
+
+# Search for hardcoded document IDs (should return nothing)
+Get-ChildItem -Path . -Recurse -Include *.py | Select-String -Pattern "1kZMdOrmI5JZR65jvZbzGZ9VKKvGlLqFO" -CaseSensitive
+```
+
+### **Verify Portability Fixes**
+
+```powershell
+# Check no hardcoded paths in documentation
+Get-ChildItem -Path . -Recurse -Include *.md | Select-String -Pattern "C:\\Users\\Youshen" -CaseSensitive
+
+# Verify DOCUMENT_ID is environment variable based
+Get-ChildItem -Path src -Recurse -Include *.py | Select-String -Pattern "DOCUMENT_ID.*=" -CaseSensitive
+
+# Check automation script templates exist
+Test-Path "run_tweet_processor.bat.template"
+Test-Path "run_tweet_processor.sh.template"
+
+# Verify portable setup documentation exists
+Test-Path "PORTABLE_SETUP.md"
+Test-Path "docs/MACOS_AUTOMATOR_SETUP.md"
 ```
 
 ### **Test Application**
@@ -141,8 +162,61 @@ Get-ChildItem -Path . -Recurse -Include *.py | Select-String -Pattern "sk-ant-ap
 # Test environment loading
 python -c "from dotenv import load_dotenv; import os; load_dotenv(); print('✅ Loaded:', bool(os.getenv('ANTHROPIC_API_KEY')))"
 
-# Test application
+# Test application (should show environment validation)
 python run_tweet_processor.py --preview
+
+# Test from different directory (portability test)
+cd ..
+python tweet-processor-mcp-agent/run_tweet_processor.py --help
+cd tweet-processor-mcp-agent
+```
+
+### **Test Automation Scripts**
+
+```powershell
+# Test Windows batch script template
+copy run_tweet_processor.bat.template run_tweet_processor_test.bat
+# Edit the .bat file to use --preview instead of --post for testing
+# run_tweet_processor_test.bat
+
+# Test shell script template (if on Windows with WSL or Git Bash)
+cp run_tweet_processor.sh.template run_tweet_processor_test.sh
+chmod +x run_tweet_processor_test.sh
+# Edit the .sh file to use --preview instead of --post for testing
+# ./run_tweet_processor_test.sh
+```
+
+### **Verify Cross-Platform Documentation**
+
+```powershell
+# Check all documentation files exist
+Test-Path "PORTABLE_SETUP.md"
+Test-Path "docs/MACOS_AUTOMATOR_SETUP.md"
+Test-Path "DEPLOYMENT_GUIDE.md"
+Test-Path "SECRETS_SETUP.md"
+
+# Verify no platform-specific paths in main documentation
+Get-Content "README.md" | Select-String -Pattern "C:\\" -CaseSensitive
+Get-Content "PORTABLE_SETUP.md" | Select-String -Pattern "C:\\Users\\Youshen" -CaseSensitive
+```
+
+### **Final Portability Verification**
+
+```powershell
+# Create test directory to verify portability
+mkdir ..\portability-test
+cp -r . ..\portability-test\tweet-processor-test
+cd ..\portability-test\tweet-processor-test
+
+# Test that environment validation works
+python run_tweet_processor.py --help
+
+# Should show validation errors for missing .env
+# This confirms the validation is working
+
+# Clean up test
+cd ..\..\tweet-processor-mcp-agent
+rm -rf ..\portability-test
 ```
 
 ### **Git Commands**
@@ -157,8 +231,25 @@ git add .
 # Review what will be committed
 git status
 
-# Create initial commit
-git commit -m "Initial commit: Tweet Processor with MCP Agent Cloud"
+# Verify no sensitive data will be committed
+git diff --cached | Select-String -Pattern "sk-ant-api03-|1kZMdOrmI5JZR65jvZbzGZ9VKKvGlLqFO"
+
+# Create portability fixes commit
+git commit -m "feat: implement comprehensive portability fixes
+
+- Remove hardcoded Google Drive document ID from source code
+- Add environment variable validation with helpful error messages
+- Create portable automation script templates for Windows/macOS/Linux
+- Update all documentation to use generic paths instead of hardcoded ones
+- Add cross-platform setup guides (Windows Task Scheduler, macOS Automator, Linux cron)
+- Enhance error handling with clear troubleshooting guidance
+- Add PORTABLE_SETUP.md for platform-agnostic installation
+- Create docs/MACOS_AUTOMATOR_SETUP.md for macOS-specific automation
+- Update DEPLOYMENT_GUIDE.md with cross-platform deployment options
+- Improve SECRETS_SETUP.md with better document ID configuration guidance
+
+Fixes ensure repository works from any installation directory on any platform
+without requiring manual path configuration or code editing."
 
 # Add remote (replace with your GitHub username)
 git remote add origin https://github.com/youshen-lim/tweet-processor-mcp-agent.git

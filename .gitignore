@@ -15,8 +15,11 @@ credentials/*.json
 # Twitter API credentials backup
 twitter_credentials.txt
 
-# Any file containing "secret", "key", or "token" in the name
-*secret*
+# Any file containing "secret", "key", or "token" in the name (but not documentation)
+*secret*.json
+*secret*.txt
+*secret*.yaml
+*secret*.yml
 *key*.json
 *token*.json
 
