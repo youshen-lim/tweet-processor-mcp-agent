@@ -3,11 +3,12 @@
 # =============================================================================
 # Core MCP framework and dependencies
 mcp>=1.13.1
-mcp-agent>=0.1.27
+mcp-agent>=0.1.34
+fastmcp>=2.12.4
 
 # Model providers for MCP Agent
-mcp-agent[anthropic]>=0.1.27
-mcp-agent[openai]>=0.1.27
+mcp-agent[anthropic]>=0.1.34
+mcp-agent[openai]>=0.1.34
 
 # =============================================================================
 # GOOGLE DRIVE INTEGRATION

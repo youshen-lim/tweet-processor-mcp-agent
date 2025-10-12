@@ -13,12 +13,11 @@ from googleapiclient.http import MediaIoBaseDownload
 import io
 from docx import Document as DocxDocument
 
-# MCP Server setup (using LastMile AI's MCP framework)
-from mcp.server import Server
-from mcp.types import Tool, TextContent
+# MCP Server setup (using FastMCP framework)
+from fastmcp import FastMCP
 
-# Initialize MCP server
-mcp = Server("google-drive-server")
+# Initialize FastMCP server
+mcp = FastMCP("google-drive-server")
 
 # Google Drive configuration
 SCOPES = ['https://www.googleapis.com/auth/drive.readonly']
@@ -174,7 +173,7 @@ class DocumentParser:
 
 # MCP Tools
 
-@mcp.tool()
+@mcp.tool
 async def read_newsletter_document(document_id: str = DOCUMENT_ID) -> str:
     """
     Read the CoreAI Newsletter document from Google Drive.
@@ -190,7 +189,7 @@ async def read_newsletter_document(document_id: str = DOCUMENT_ID) -> str:
     return text
 
 
-@mcp.tool()
+@mcp.tool
 async def parse_newsletter_articles(document_id: str = DOCUMENT_ID) -> List[Dict[str, Any]]:
     """
     Parse CoreAI Newsletter document and extract all articles.
@@ -224,7 +223,7 @@ async def parse_newsletter_articles(document_id: str = DOCUMENT_ID) -> List[Dict
     ]
 
 
-@mcp.tool()
+@mcp.tool
 async def get_article_by_number(article_number: int, document_id: str = DOCUMENT_ID) -> Dict[str, Any]:
     """
     Get a specific article by its number.
@@ -245,7 +244,7 @@ async def get_article_by_number(article_number: int, document_id: str = DOCUMENT
     raise ValueError(f"Article #{article_number} not found")
 
 
-@mcp.tool()
+@mcp.tool
 async def validate_document_structure(document_id: str = DOCUMENT_ID) -> Dict[str, Any]:
     """
     Validate the structure of the newsletter document.
@@ -289,15 +288,9 @@ async def validate_document_structure(document_id: str = DOCUMENT_ID) -> Dict[st
     }
 
 
-# Server lifecycle
-@mcp.server_lifecycle()
-async def on_startup():
-    """Initialize server on startup."""
+if __name__ == "__main__":
+    # Run the FastMCP server
     print("Google Drive MCP Server started")
     print(f"Configured document ID: {DOCUMENT_ID}")
-
-
-if __name__ == "__main__":
-    # Run the MCP server
     mcp.run()
 

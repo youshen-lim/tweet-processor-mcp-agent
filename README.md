@@ -250,7 +250,8 @@ pip install -r requirements.txt
 
 **Dependencies:**
 - `mcp>=1.13.1` - Model Context Protocol SDK
-- `mcp-agent>=0.1.27` - MCP Agent Cloud framework
+- `mcp-agent>=0.1.34` - MCP Agent Cloud framework (latest)
+- `fastmcp>=2.12.4` - FastMCP framework for MCP servers
 - `anthropic>=0.48.0` - Claude API client
 - `tweepy>=4.14.0` - Twitter API client
 - `google-auth`, `google-api-python-client` - Google Drive API
