@@ -1,0 +1,17 @@
+﻿{
+  "current_article": 1,
+  "current_variation": 1,
+  "last_posted": "2025-01-01T00:00:00.000000",
+  "total_posts": 0,
+  "articles_cache": [
+    {
+      "number": 1,
+      "title": "Your Article Title Here",
+      "url": "https://www.linkedin.com/pulse/your-article-1-url-here/",
+      "content": "Your article content will be automatically extracted from your Google Drive document...",
+      "word_count": 1000,
+      "has_title": true,
+      "has_url": true
+    }
+  ]
+}

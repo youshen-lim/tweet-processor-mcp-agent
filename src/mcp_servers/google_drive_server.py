@@ -13,20 +13,12 @@ from googleapiclient.http import MediaIoBaseDownload
 import io
 from docx import Document as DocxDocument
 
-# MCP Server setup (using FastMCP framework)
-from fastmcp import FastMCP
-
-# Initialize FastMCP server
-mcp = FastMCP("google-drive-server")
+# Note: This module provides standalone Google Drive functionality
+# MCP server functionality is optional and not required for direct usage
 
 # Google Drive configuration
 SCOPES = ['https://www.googleapis.com/auth/drive.readonly']
-DOCUMENT_ID = os.getenv('GOOGLE_DRIVE_DOCUMENT_ID')
-if not DOCUMENT_ID:
-    print("⚠️  Warning: GOOGLE_DRIVE_DOCUMENT_ID environment variable is not set.")
-    print("📖 Please set your Google Drive document ID in the .env file.")
-    print("💡 See SECRETS_SETUP.md for detailed instructions.")
-    DOCUMENT_ID = "your_document_id_here"  # Fallback placeholder
+DOCUMENT_ID = "your_google_drive_document_id_here"
 
 
 @dataclass
@@ -148,6 +140,14 @@ class DocumentParser:
             re.IGNORECASE
         )
         url = url_match.group(1).strip() if url_match else ""
+
+        # Clean up URL - remove any leading colons or spaces
+        if url.startswith(':'):
+            url = url[1:].strip()
+
+        # Ensure URL is valid or empty
+        if url and not url.startswith('http'):
+            url = ""
         
         # Extract content (everything after URL line)
         content_match = re.search(
@@ -171,16 +171,15 @@ class DocumentParser:
         )
 
 
-# MCP Tools
+# Utility functions for direct usage (no MCP server required)
 
-@mcp.tool
-async def read_newsletter_document(document_id: str = DOCUMENT_ID) -> str:
+def read_newsletter_document(document_id: str = DOCUMENT_ID) -> str:
     """
     Read the CoreAI Newsletter document from Google Drive.
-    
+
     Args:
         document_id: Google Drive document ID (default: configured document)
-        
+
     Returns:
         Full text content of the document
     """
@@ -189,25 +188,24 @@ async def read_newsletter_document(document_id: str = DOCUMENT_ID) -> str:
     return text
 
 
-@mcp.tool
-async def parse_newsletter_articles(document_id: str = DOCUMENT_ID) -> List[Dict[str, Any]]:
+def parse_newsletter_articles(document_id: str = DOCUMENT_ID) -> List[Dict[str, Any]]:
     """
     Parse CoreAI Newsletter document and extract all articles.
-    
+
     Args:
         document_id: Google Drive document ID (default: configured document)
-        
+
     Returns:
         List of articles with number, title, URL, content, and metadata
     """
     # Read document
     client = GoogleDriveClient()
     text = client.read_document_text(document_id)
-    
+
     # Parse articles
     parser = DocumentParser(text)
     articles = parser.parse()
-    
+
     # Convert to dict format
     return [
         {
@@ -223,50 +221,48 @@ async def parse_newsletter_articles(document_id: str = DOCUMENT_ID) -> List[Dict
     ]
 
 
-@mcp.tool
-async def get_article_by_number(article_number: int, document_id: str = DOCUMENT_ID) -> Dict[str, Any]:
+def get_article_by_number(article_number: int, document_id: str = DOCUMENT_ID) -> Dict[str, Any]:
     """
     Get a specific article by its number.
-    
+
     Args:
         article_number: Article number to retrieve
         document_id: Google Drive document ID (default: configured document)
-        
+
     Returns:
         Article data with number, title, URL, content, and metadata
     """
-    articles = await parse_newsletter_articles(document_id)
-    
+    articles = parse_newsletter_articles(document_id)
+
     for article in articles:
         if article["number"] == article_number:
             return article
-            
+
     raise ValueError(f"Article #{article_number} not found")
 
 
-@mcp.tool
-async def validate_document_structure(document_id: str = DOCUMENT_ID) -> Dict[str, Any]:
+def validate_document_structure(document_id: str = DOCUMENT_ID) -> Dict[str, Any]:
     """
     Validate the structure of the newsletter document.
-    
+
     Args:
         document_id: Google Drive document ID (default: configured document)
-        
+
     Returns:
         Validation report with article count, issues, and warnings
     """
-    articles = await parse_newsletter_articles(document_id)
-    
+    articles = parse_newsletter_articles(document_id)
+
     issues = []
     warnings = []
-    
+
     # Check for sequential numbering
     expected_num = 1
     for article in articles:
         if article["number"] != expected_num:
             issues.append(f"Article numbering gap: expected #{expected_num}, found #{article['number']}")
         expected_num = article["number"] + 1
-    
+
     # Check for missing titles or URLs
     for article in articles:
         if not article["has_title"]:
@@ -275,7 +271,7 @@ async def validate_document_structure(document_id: str = DOCUMENT_ID) -> Dict[st
             warnings.append(f"Article #{article['number']} is missing a URL")
         if article["word_count"] < 50:
             warnings.append(f"Article #{article['number']} has very short content ({article['word_count']} words)")
-    
+
     return {
         "total_articles": len(articles),
         "articles_with_titles": sum(1 for a in articles if a["has_title"]),
@@ -286,11 +282,4 @@ async def validate_document_structure(document_id: str = DOCUMENT_ID) -> Dict[st
         "warnings": warnings,
         "status": "valid" if not issues else "invalid"
     }
-
-
-if __name__ == "__main__":
-    # Run the FastMCP server
-    print("Google Drive MCP Server started")
-    print(f"Configured document ID: {DOCUMENT_ID}")
-    mcp.run()
 

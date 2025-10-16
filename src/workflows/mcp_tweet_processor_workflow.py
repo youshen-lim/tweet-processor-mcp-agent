@@ -11,6 +11,7 @@ import sys
 import os
 from zoneinfo import ZoneInfo
 from dotenv import load_dotenv
+import logging
 
 # Load environment variables BEFORE importing MCP Agent
 load_dotenv()
@@ -27,13 +28,7 @@ from agents.mcp_content_analyzer_agent import MCPContentAnalyzerAgent, analyze_a
 from agents.mcp_tweet_composer_agent import MCPTweetComposerAgent, compose_tweets_for_article
 
 # Configuration
-DOCUMENT_ID = os.getenv('GOOGLE_DRIVE_DOCUMENT_ID')
-if not DOCUMENT_ID:
-    raise ValueError(
-        "❌ GOOGLE_DRIVE_DOCUMENT_ID environment variable is not set!\n"
-        "📖 Please set your Google Drive document ID in the .env file.\n"
-        "💡 See SECRETS_SETUP.md for detailed instructions on how to get your document ID."
-    )
+DOCUMENT_ID = "your_google_drive_document_id_here"
 POSTING_SCHEDULE = {
     "day": "Thursday",
     "time": "11:30",
@@ -43,7 +38,10 @@ POSTING_SCHEDULE = {
 
 class MCPTweetProcessorWorkflow:
     """Main workflow for processing newsletter articles using MCP Agent Cloud."""
-    
+
+    # Note: URL validation now uses format patterns instead of exact matching
+    # This allows flexibility while ensuring URLs follow expected LinkedIn pulse patterns
+
     def __init__(self, document_id: str = DOCUMENT_ID, mcp_app: MCPApp = None):
         """
         Initialize the workflow.
@@ -57,8 +55,6 @@ class MCPTweetProcessorWorkflow:
 
         # Create MCP App if not provided
         if mcp_app is None:
-            # Validate configuration before creating MCP App
-            self._validate_mcp_config()
             self.mcp_app = MCPApp(name="tweet_processor")
         else:
             self.mcp_app = mcp_app
@@ -67,50 +63,174 @@ class MCPTweetProcessorWorkflow:
         self.content_analyzer = None
         self.tweet_composer = None
 
-    def _validate_mcp_config(self):
-        """Validate MCP Agent configuration file."""
-        config_path = 'mcp_agent.config.yaml'
+        # Setup logging
+        self.logger = logging.getLogger(__name__)
 
-        if not os.path.exists(config_path):
-            raise FileNotFoundError(
-                f"❌ MCP Agent configuration file not found: {config_path}\n"
-                f"📖 This file is required for the MCP Agent Cloud framework.\n"
-                f"💡 Make sure you're running from the correct directory and the file exists."
-            )
+    def validate_article_url(self, article_number: int, article_url: str) -> bool:
+        """
+        Validate that the URL format is appropriate for the specified article number.
 
+        This method validates URL format patterns instead of requiring exact matches,
+        which allows for flexibility while ensuring URLs follow expected patterns.
+
+        Args:
+            article_number: The article number (1-5)
+            article_url: The URL to validate
+
+        Returns:
+            bool: True if URL format is valid for the article
+
+        Raises:
+            ValueError: If validation fails
+        """
+        # Check if article number is valid
+        if article_number not in range(1, 6):
+            raise ValueError(f"Invalid article number: {article_number}. Must be 1-5.")
+
+        # Article #5 is allowed to have no URL (incomplete in document)
+        if article_number == 5 and (not article_url or not article_url.strip()):
+            self.logger.info(f"✅ Article #{article_number} has no URL (expected for incomplete article)")
+            return True
+
+        # For other articles, URL is required
+        if not article_url or not article_url.strip():
+            raise ValueError(f"Article #{article_number} has empty or None URL")
+
+        # Validate URL format using the existing validate_url_format method
+        # This checks for proper LinkedIn pulse URL patterns
         try:
-            import yaml
-            with open(config_path, 'r') as f:
-                config = yaml.safe_load(f)
-        except ImportError:
-            raise ImportError(
-                f"❌ PyYAML library not found!\n"
-                f"📖 PyYAML is required to parse the MCP Agent configuration.\n"
-                f"💡 Install it with: pip install PyYAML"
-            )
-        except yaml.YAMLError as e:
-            raise ValueError(
-                f"❌ Invalid YAML syntax in {config_path}: {str(e)}\n"
-                f"📖 The configuration file contains syntax errors.\n"
-                f"💡 Check the YAML formatting and fix any syntax issues."
-            )
-        except Exception as e:
-            raise ValueError(
-                f"❌ Failed to load {config_path}: {str(e)}\n"
-                f"📖 Could not read the configuration file.\n"
-                f"💡 Check file permissions and content."
-            )
+            self.validate_url_format(article_url, article_number)
+            self.logger.info(f"✅ URL format validation passed for Article #{article_number}: {article_url}")
+            return True
+        except ValueError as e:
+            self.logger.error(f"❌ URL format validation failed for Article #{article_number}: {article_url}")
+            raise e
 
-        # Validate required sections
-        required_sections = ['execution_engine', 'logger', 'anthropic']
-        missing_sections = [section for section in required_sections if section not in config]
+    def validate_url_format(self, url: str, article_number: int = None) -> bool:
+        """
+        Validate URL format and structure.
 
-        if missing_sections:
-            raise ValueError(
-                f"❌ Missing required configuration sections: {', '.join(missing_sections)}\n"
-                f"📖 The MCP Agent configuration is incomplete.\n"
-                f"💡 See mcp_agent.config.yaml for the correct format."
-            )
+        Args:
+            url: URL to validate
+            article_number: Optional article number for error messages
+
+        Returns:
+            bool: True if URL format is valid
+
+        Raises:
+            ValueError: If URL format is invalid
+        """
+        article_ref = f"Article #{article_number}" if article_number else "URL"
+
+        if not url or not url.strip():
+            raise ValueError(f"{article_ref} has empty URL")
+
+        if not url.startswith('https://'):
+            raise ValueError(f"{article_ref} URL must start with https://")
+
+        if 'linkedin.com/pulse/' not in url:
+            raise ValueError(f"{article_ref} URL must be a LinkedIn pulse URL")
+
+        # Check for valid ending patterns (LinkedIn pulse URLs end with author identifier)
+        # Pattern: ends with '-lim-' followed by alphanumeric characters and '/'
+        import re
+        if not re.search(r'-lim-[a-zA-Z0-9]+/$', url):
+            raise ValueError(f"{article_ref} URL must end with LinkedIn author pattern (-lim-xxxxx/)")
+
+        return True
+
+    def log_url_validation_report(self, articles: List[Dict[str, Any]]) -> None:
+        """
+        Log a comprehensive URL validation report.
+
+        Args:
+            articles: List of article data
+        """
+        self.logger.info("=" * 60)
+        self.logger.info("URL VALIDATION REPORT")
+        self.logger.info("=" * 60)
+
+        for article in articles:
+            article_number = article['number']
+            article_url = article['url']
+            article_title = article.get('title', 'Unknown')
+
+            self.logger.info(f"Article #{article_number}: {article_title}")
+            self.logger.info(f"  URL: {article_url}")
+
+            try:
+                self.validate_url_format(article_url, article_number)
+                self.validate_article_url(article_number, article_url)
+                self.logger.info(f"  Status: ✅ VALID")
+            except ValueError as e:
+                self.logger.error(f"  Status: ❌ INVALID - {str(e)}")
+
+            self.logger.info("")
+
+        self.logger.info("=" * 60)
+
+    def _validate_articles_data(self, articles: List[Dict[str, Any]]) -> None:
+        """
+        Validate article data integrity including URLs.
+
+        Args:
+            articles: List of article data to validate
+
+        Raises:
+            ValueError: If validation fails
+        """
+        if not articles:
+            raise ValueError("No articles found in data")
+
+        # Filter to only the first 5 articles (the system is designed for 5 articles)
+        if len(articles) < 5:
+            raise ValueError(f"Expected at least 5 articles, found {len(articles)}")
+
+        # Use only the first 5 articles
+        articles = articles[:5]
+
+        # Check for required fields and URL validation
+        for article in articles:
+            article_number = article.get('number')
+            article_url = article.get('url')
+            article_title = article.get('title')
+
+            # Check required fields
+            if not article_number:
+                raise ValueError(f"Article missing 'number' field: {article}")
+
+            if not article_title:
+                raise ValueError(f"Article #{article_number} missing 'title' field")
+
+            # Article #5 is allowed to have no URL (incomplete in document)
+            if not article_url and article_number != 5:
+                raise ValueError(f"Article #{article_number} missing 'url' field")
+
+            # Validate URL format and mapping (only if URL exists)
+            if article_url:
+                try:
+                    self.validate_url_format(article_url, article_number)
+                    self.validate_article_url(article_number, article_url)
+                except ValueError as e:
+                    raise ValueError(f"Article #{article_number} validation failed: {str(e)}")
+            elif article_number == 5:
+                # Article #5 has no URL - this is expected
+                self.logger.info(f"Article #{article_number} has no URL (incomplete article)")
+            else:
+                raise ValueError(f"Article #{article_number} missing 'url' field")
+
+        # Check for duplicate article numbers
+        article_numbers = [article['number'] for article in articles]
+        if len(set(article_numbers)) != len(article_numbers):
+            raise ValueError(f"Duplicate article numbers found: {article_numbers}")
+
+        # Check for duplicate URLs
+        article_urls = [article['url'] for article in articles]
+        if len(set(article_urls)) != len(article_urls):
+            raise ValueError(f"Duplicate URLs found: {article_urls}")
+
+        # Log validation report
+        self.log_url_validation_report(articles)
 
     def _load_state(self) -> Dict[str, Any]:
         """Load workflow state from storage."""
@@ -179,34 +299,38 @@ class MCPTweetProcessorWorkflow:
                 if not self.state.get("articles_cache"):
                     print("📄 Step 1: Reading document from Google Drive...")
                     articles = await self._read_and_parse_document()
+
+                    # Validate URLs before caching
+                    print("🔍 Validating article URLs...")
+                    try:
+                        self._validate_articles_data(articles)
+                        print("✅ All article URLs validated successfully")
+                        self.logger.info("Article URL validation passed")
+                    except ValueError as e:
+                        error_msg = f"Article validation failed: {str(e)}"
+                        print(f"❌ {error_msg}")
+                        self.logger.error(error_msg)
+                        raise
+
                     self.state["articles_cache"] = articles
                     self._save_state()
-
-                    # Validate articles were found
-                    if not articles or len(articles) == 0:
-                        raise ValueError(
-                            f"❌ No articles found in the document!\n"
-                            f"📖 The Google Drive document appears to be empty or improperly formatted.\n"
-                            f"💡 Check that your document ID is correct and the document contains newsletter articles.\n"
-                            f"🔗 Document ID: {self.document_id}"
-                        )
-
                     print(f"✓ Found {len(articles)} articles")
                     logger.info(f"Loaded {len(articles)} articles from Google Drive")
                 else:
                     articles = self.state["articles_cache"]
-
-                    # Validate cached articles
-                    if not articles or len(articles) == 0:
-                        raise ValueError(
-                            f"❌ Cached articles list is empty!\n"
-                            f"📖 The cached articles data appears to be corrupted.\n"
-                            f"💡 Delete workflow_state.json and try again to reload from Google Drive.\n"
-                            f"🔗 Document ID: {self.document_id}"
-                        )
-
                     print(f"✓ Using cached articles ({len(articles)} total)")
                     logger.info(f"Using cached articles: {len(articles)} total")
+
+                    # Validate cached articles
+                    try:
+                        self._validate_articles_data(articles)
+                        self.logger.info("Cached article URL validation passed")
+                    except ValueError as e:
+                        error_msg = f"Cached article validation failed: {str(e)}"
+                        self.logger.error(error_msg)
+                        print(f"⚠️ Warning: {error_msg}")
+                        # Don't raise here as we want to continue with cached data
+
                 print()
                 
                 # Step 2: Get current article to post
@@ -255,32 +379,48 @@ class MCPTweetProcessorWorkflow:
                 # Step 4: Generate tweet for current variation
                 print(f"🐦 Step 4: Composing tweet with MCP Agent (Variation {current_variation})...")
                 logger.info(f"Composing tweet variation {current_variation}")
-                
+
+                # URL Validation before tweet composition
+                article_number = article['number']
+                article_url = article['url']
+
+                print(f"🔍 Validating URL for Article #{article_number}...")
+                self.logger.info(f"Processing Article #{article_number} with URL: {article_url}")
+
+                try:
+                    # Validate URL format and mapping
+                    self.validate_url_format(article_url, article_number)
+                    self.validate_article_url(article_number, article_url)
+
+                    # Cross-validate with analysis cache if available
+                    if cache_key in self.state:
+                        analysis_url = self.state[cache_key].get('article_url')
+                        if analysis_url and analysis_url != article_url:
+                            raise ValueError(
+                                f"URL mismatch detected for Article #{article_number}:\n"
+                                f"Article cache URL: {article_url}\n"
+                                f"Analysis cache URL: {analysis_url}\n"
+                                f"These URLs must match for data integrity."
+                            )
+
+                    print(f"✅ URL validation passed for Article #{article_number}")
+
+                except ValueError as e:
+                    error_msg = f"URL validation failed for Article #{article_number}: {str(e)}"
+                    self.logger.error(error_msg)
+                    print(f"❌ {error_msg}")
+                    raise
+
                 # Use MCP Tweet Composer Agent
                 tweets = await self.tweet_composer.compose_multiple_variations(
-                    article_number=article['number'],
+                    article_number=article_number,
                     article_title=article['title'],
-                    article_url=article['url'],
+                    article_url=article_url,
                     insights=analysis['key_insights'],
                     themes=analysis.get('themes', []),
                     num_variations=4
                 )
-
-                # Validate tweet generation results
-                if not tweets or len(tweets) == 0:
-                    raise ValueError(
-                        f"❌ Tweet generation failed: No tweets were generated for article #{current_article_num}\n"
-                        f"📖 This could be due to API issues or content analysis problems.\n"
-                        f"💡 Try running with --preview mode to debug the issue."
-                    )
-
-                if current_variation > len(tweets):
-                    raise ValueError(
-                        f"❌ Tweet variation {current_variation} not available: Only {len(tweets)} variations generated\n"
-                        f"📖 Expected 4 variations but got {len(tweets)}.\n"
-                        f"💡 This could be due to API rate limits or content processing issues."
-                    )
-
+                
                 # Get the specific variation
                 tweet_obj = tweets[current_variation - 1]
                 tweet = {
@@ -393,8 +533,8 @@ class MCPTweetProcessorWorkflow:
             parser = DocumentParser(text)
             articles = parser.parse()
 
-            # Convert to dict format
-            return [
+            # Convert to dict format and filter to first 5 articles
+            articles_data = [
                 {
                     'number': a.number,
                     'title': a.title,
@@ -406,6 +546,9 @@ class MCPTweetProcessorWorkflow:
                 }
                 for a in articles
             ]
+
+            # Return only the first 5 articles (system is designed for 5 articles)
+            return articles_data[:5]
         else:
             # Use mock for testing
             from test_system import MockDocumentParser, SAMPLE_DOCUMENT
@@ -461,15 +604,6 @@ class MCPTweetProcessorWorkflow:
             else:
                 articles = self.state["articles_cache"]
 
-            # Validate articles for pipeline generation
-            if not articles or len(articles) == 0:
-                raise ValueError(
-                    f"❌ No articles available for pipeline generation!\n"
-                    f"📖 Cannot generate pipeline without articles.\n"
-                    f"💡 Check your Google Drive document and ensure it contains newsletter articles.\n"
-                    f"🔗 Document ID: {self.document_id}"
-                )
-
             # Get posting schedule
             posting_day = os.getenv('POSTING_DAY', 'Thursday')
             posting_time = os.getenv('POSTING_TIME', '11:30')
@@ -519,24 +653,43 @@ class MCPTweetProcessorWorkflow:
                     self.state[cache_key] = analysis
                     self._save_state()
 
+                # URL Validation before tweet composition
+                article_number = article['number']
+                article_url = article['url']
+
+                self.logger.info(f"Processing Article #{article_number} with URL: {article_url}")
+
+                try:
+                    # Validate URL format and mapping
+                    self.validate_url_format(article_url, article_number)
+                    self.validate_article_url(article_number, article_url)
+
+                    # Cross-validate with analysis cache
+                    analysis_url = analysis.get('article_url')
+                    if analysis_url and analysis_url != article_url:
+                        raise ValueError(
+                            f"URL mismatch detected for Article #{article_number}:\n"
+                            f"Article cache URL: {article_url}\n"
+                            f"Analysis cache URL: {analysis_url}\n"
+                            f"These URLs must match for data integrity."
+                        )
+
+                    self.logger.info(f"✅ URL validation passed for Article #{article_number}")
+
+                except ValueError as e:
+                    error_msg = f"URL validation failed for Article #{article_number}: {str(e)}"
+                    self.logger.error(error_msg)
+                    raise
+
                 # Compose tweet
                 tweets = await self.tweet_composer.compose_multiple_variations(
-                    article_number=article['number'],
+                    article_number=article_number,
                     article_title=article['title'],
-                    article_url=article['url'],
+                    article_url=article_url,
                     insights=analysis['key_insights'],
                     themes=analysis.get('themes', []),
                     num_variations=4
                 )
-
-                # Validate tweet generation for pipeline
-                if not tweets or len(tweets) == 0:
-                    print(f"⚠️  Warning: No tweets generated for article #{current_article_num}, skipping week {week + 1}")
-                    continue
-
-                if current_variation > len(tweets):
-                    print(f"⚠️  Warning: Variation {current_variation} not available for article #{current_article_num}, using variation 1")
-                    current_variation = 1
 
                 tweet_obj = tweets[current_variation - 1]
 

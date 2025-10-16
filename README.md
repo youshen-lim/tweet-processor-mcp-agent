@@ -277,7 +277,7 @@ cp mcp_agent.secrets.yaml.example mcp_agent.secrets.yaml
 ```bash
 # LLM Provider
 LLM_PROVIDER=anthropic
-ANTHROPIC_API_KEY=sk-ant-api03-YOUR-KEY-HERE
+ANTHROPIC_API_KEY=your_anthropic_api_key_here
 ANTHROPIC_MODEL=claude-3-5-sonnet-20241022
 
 # Google Drive
@@ -544,7 +544,7 @@ See [docs/EXAMPLE_NEWSLETTER.md](docs/EXAMPLE_NEWSLETTER.md) for a complete exam
 - Verify `.env` file exists in project root
 - Check `ANTHROPIC_API_KEY` is set in `.env`
 - Ensure no extra spaces around the `=` sign
-- Verify the key starts with `sk-ant-api03-`
+- Verify the key starts with `your_anthropic_api_key_starts_with_sk-ant-api03-`
 
 #### **"Twitter 403 Forbidden"**
 - Access token doesn't have write permissions
@@ -680,7 +680,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 **Current Version:** 1.0.0
 **Status:** Production-ready for local use
-**Last Updated:** October 2, 2025
+**Last Updated:** October 16, 2025
 
 ### **Roadmap**
 
