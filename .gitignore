@@ -15,11 +15,8 @@ credentials/*.json
 # Twitter API credentials backup
 twitter_credentials.txt
 
-# Any file containing "secret", "key", or "token" in the name (but not documentation)
-*secret*.json
-*secret*.txt
-*secret*.yaml
-*secret*.yml
+# Any file containing "secret", "key", or "token" in the name
+*secret*
 *key*.json
 *token*.json
 
@@ -191,7 +188,7 @@ docker-compose.override.yml
 # =============================================================================
 
 # Test files (if you recreate them)
-test_*.py
+/test_*.py
 test_results.json
 
 # Development/experimental files
@@ -207,4 +204,9 @@ NOTES.md
 # Local configuration overrides
 .env.local
 config.local.json
+
+
+# Execution log text files
+posting_log.txt
+analysis_log.txt
 

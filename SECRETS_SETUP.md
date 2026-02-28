@@ -42,7 +42,7 @@ TWITTER_API_SECRET=YOUR-ACTUAL-SECRET-HERE
 TWITTER_ACCESS_TOKEN=YOUR-ACTUAL-TOKEN-HERE
 TWITTER_ACCESS_TOKEN_SECRET=YOUR-ACTUAL-TOKEN-SECRET-HERE
 
-# Replace with your Google Drive document ID (see detailed instructions below)
+# Replace with your Google Drive document ID
 GOOGLE_DRIVE_DOCUMENT_ID=YOUR-DOCUMENT-ID-HERE
 ```
 
@@ -178,22 +178,15 @@ See [Detailed Google Drive Setup](#detailed-google-drive-setup) below.
 
 #### **F. Get Document ID**
 
-**⚠️ IMPORTANT:** You must configure your own Google Drive document ID. The application will not work without this step.
-
-1. Open your Google Drive document containing newsletter articles
-2. Look at the URL in your browser's address bar:
+1. Open your Google Drive document
+2. Look at the URL:
    ```
-   https://docs.google.com/document/d/1a2b3c4d5e6f7g8h9i0j1k2l3m4n5o6p7q8r9s0t/edit
-                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-                                      This part is your Document ID
+   https://docs.google.com/document/d/1a2b3c4d5e6f7g8h9i0j/edit
+                                      ^^^^^^^^^^^^^^^^^^^^
+                                      This is your Document ID
    ```
-3. Copy the Document ID (the long string between `/d/` and `/edit`)
-4. Paste into `.env` → `GOOGLE_DRIVE_DOCUMENT_ID=1a2b3c4d5e6f7g8h9i0j1k2l3m4n5o6p7q8r9s0t`
-
-**Example:**
-- URL: `https://docs.google.com/document/d/1kZMdOrmI5JZR65jvZbzGZ9VKKvGlLqFO/edit`
-- Document ID: `1kZMdOrmI5JZR65jvZbzGZ9VKKvGlLqFO`
-- In .env: `GOOGLE_DRIVE_DOCUMENT_ID=1kZMdOrmI5JZR65jvZbzGZ9VKKvGlLqFO`
+3. Copy the Document ID
+4. Paste into `.env` → `GOOGLE_DRIVE_DOCUMENT_ID=`
 
 ---
 
@@ -260,12 +253,6 @@ python run_tweet_processor.py --preview
 - Verify file is named `google-drive-credentials.json`
 - Verify file is in `credentials/` folder
 - Check path in `.env` → `GOOGLE_DRIVE_CREDENTIALS_PATH`
-
-### **"GOOGLE_DRIVE_DOCUMENT_ID environment variable is not set"**
-- This error means you haven't configured your Google Drive document ID
-- Open `.env` file and set `GOOGLE_DRIVE_DOCUMENT_ID=your_actual_document_id`
-- See section "F. Get Document ID" above for detailed instructions
-- Make sure you're using your own document ID, not a placeholder value
 
 ---
 

@@ -51,105 +51,6 @@ except ImportError:
     TweetProcessorWorkflow = None
 
 
-def validate_environment():
-    """Validate all required environment variables and files are present."""
-    print("🔍 Validating environment...")
-
-    # Get current working directory
-    current_dir = os.getcwd()
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-
-    print(f"📁 Current directory: {current_dir}")
-    print(f"📁 Script directory: {script_dir}")
-
-    # Check if we're in the right directory
-    if current_dir != script_dir:
-        print(f"⚠️  Warning: Running from different directory than script location")
-        print(f"💡 Consider running from: {script_dir}")
-
-    # Check required files exist
-    required_files = [
-        '.env',
-        'mcp_agent.config.yaml',
-        'requirements.txt',
-        'src/workflows/mcp_tweet_processor_workflow.py',
-        'src/mcp_servers/google_drive_server.py',
-        'src/mcp_servers/twitter_server.py'
-    ]
-
-    missing_files = []
-    for file_path in required_files:
-        if not os.path.exists(file_path):
-            missing_files.append(file_path)
-
-    if missing_files:
-        print("❌ Missing required files:")
-        for file_path in missing_files:
-            print(f"   - {file_path}")
-        print()
-        print("💡 Make sure you're running this script from the tweet-processor-mcp-agent directory")
-        print("📖 See PORTABLE_SETUP.md for setup instructions")
-        return False
-
-    # Check required environment variables
-    required_env_vars = [
-        'ANTHROPIC_API_KEY',
-        'GOOGLE_DRIVE_DOCUMENT_ID',
-        'TWITTER_API_KEY',
-        'TWITTER_API_SECRET',
-        'TWITTER_ACCESS_TOKEN',
-        'TWITTER_ACCESS_TOKEN_SECRET'
-    ]
-
-    missing_vars = []
-    placeholder_vars = []
-
-    for var in required_env_vars:
-        value = os.getenv(var)
-        if not value:
-            missing_vars.append(var)
-        elif value in ['your_document_id_here', 'YOUR-ACTUAL-KEY-HERE', 'YOUR-ACTUAL-SECRET-HERE',
-                       'YOUR-ACTUAL-TOKEN-HERE', 'YOUR-ACTUAL-TOKEN-SECRET-HERE']:
-            placeholder_vars.append(var)
-
-    if missing_vars:
-        print("❌ Missing environment variables:")
-        for var in missing_vars:
-            print(f"   - {var}")
-        print()
-        print("📖 Please set these variables in your .env file")
-        print("💡 See SECRETS_SETUP.md for detailed instructions")
-        return False
-
-    if placeholder_vars:
-        print("❌ Environment variables still have placeholder values:")
-        for var in placeholder_vars:
-            print(f"   - {var} = {os.getenv(var)}")
-        print()
-        print("📖 Please replace placeholder values with your actual API keys")
-        print("💡 See SECRETS_SETUP.md for detailed instructions")
-        return False
-
-    # Special check for Google Drive Document ID format
-    doc_id = os.getenv('GOOGLE_DRIVE_DOCUMENT_ID')
-    if doc_id and len(doc_id) < 20:  # Google Drive document IDs are typically much longer
-        print(f"⚠️  Warning: GOOGLE_DRIVE_DOCUMENT_ID looks too short: {doc_id}")
-        print("💡 Make sure you copied the full document ID from the Google Drive URL")
-        print("📖 See SECRETS_SETUP.md section 'F. Get Document ID' for help")
-
-    # Check Google Drive credentials file
-    credentials_path = os.getenv('GOOGLE_DRIVE_CREDENTIALS_PATH', 'credentials/google-drive-credentials.json')
-    if not os.path.exists(credentials_path):
-        print(f"❌ Google Drive credentials file not found: {credentials_path}")
-        print("📖 Please set up Google Drive credentials")
-        print("💡 See SECRETS_SETUP.md section '3. Google Drive API Setup' for instructions")
-        return False
-
-    print("✅ Environment validation passed")
-    print()
-    return True
-
-
 def print_banner():
     """Print welcome banner."""
     print("=" * 80)
@@ -460,18 +361,6 @@ async def run_generate_all():
 
 async def main():
     """Main entry point."""
-    print_banner()
-
-    # Validate environment before proceeding
-    if not validate_environment():
-        print("❌ Environment validation failed. Please fix the issues above before continuing.")
-        print()
-        print("📚 Helpful resources:")
-        print("   - PORTABLE_SETUP.md - Complete setup guide")
-        print("   - SECRETS_SETUP.md - API configuration guide")
-        print("   - README.md - Project overview")
-        sys.exit(1)
-
     # Parse command line arguments
     if len(sys.argv) > 1:
         command = sys.argv[1].lower()

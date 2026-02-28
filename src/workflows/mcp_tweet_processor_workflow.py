@@ -28,7 +28,7 @@ from agents.mcp_content_analyzer_agent import MCPContentAnalyzerAgent, analyze_a
 from agents.mcp_tweet_composer_agent import MCPTweetComposerAgent, compose_tweets_for_article
 
 # Configuration
-DOCUMENT_ID = "your_google_drive_document_id_here"
+DOCUMENT_ID = None  # Legacy constant - no longer used (migrated to local file storage)
 POSTING_SCHEDULE = {
     "day": "Thursday",
     "time": "11:30",
@@ -47,10 +47,11 @@ class MCPTweetProcessorWorkflow:
         Initialize the workflow.
 
         Args:
-            document_id: Google Drive document ID
+            document_id: (Deprecated) Legacy parameter, no longer used
             mcp_app: Optional MCPApp instance (created if not provided)
         """
-        self.document_id = document_id
+        # Legacy parameter kept for backward compatibility but not used
+        self.articles_file = os.getenv('ARTICLES_FILE', 'data/articles.md')
         self.state = self._load_state()
 
         # Create MCP App if not provided
@@ -74,7 +75,7 @@ class MCPTweetProcessorWorkflow:
         which allows for flexibility while ensuring URLs follow expected patterns.
 
         Args:
-            article_number: The article number (1-5)
+            article_number: The article number (any positive integer)
             article_url: The URL to validate
 
         Returns:
@@ -83,18 +84,14 @@ class MCPTweetProcessorWorkflow:
         Raises:
             ValueError: If validation fails
         """
-        # Check if article number is valid
-        if article_number not in range(1, 6):
-            raise ValueError(f"Invalid article number: {article_number}. Must be 1-5.")
+        # Check if article number is valid (any positive integer)
+        if not isinstance(article_number, int) or article_number < 1:
+            raise ValueError(f"Invalid article number: {article_number}. Must be a positive integer.")
 
-        # Article #5 is allowed to have no URL (incomplete in document)
-        if article_number == 5 and (not article_url or not article_url.strip()):
-            self.logger.info(f"✅ Article #{article_number} has no URL (expected for incomplete article)")
-            return True
-
-        # For other articles, URL is required
+        # Some articles may be incomplete and have no URL (like Article #6)
         if not article_url or not article_url.strip():
-            raise ValueError(f"Article #{article_number} has empty or None URL")
+            self.logger.info(f"⚠️  Article #{article_number} has no URL (incomplete article)")
+            raise ValueError(f"Article #{article_number} has empty URL")
 
         # Validate URL format using the existing validate_url_format method
         # This checks for proper LinkedIn pulse URL patterns
@@ -182,12 +179,16 @@ class MCPTweetProcessorWorkflow:
         if not articles:
             raise ValueError("No articles found in data")
 
-        # Filter to only the first 5 articles (the system is designed for 5 articles)
-        if len(articles) < 5:
-            raise ValueError(f"Expected at least 5 articles, found {len(articles)}")
+        # Filter to only articles with content (skip incomplete articles like Article #6)
+        articles_with_content = [a for a in articles if a.get('word_count', 0) > 0 and a.get('has_url', False)]
 
-        # Use only the first 5 articles
-        articles = articles[:5]
+        if not articles_with_content:
+            raise ValueError("No articles with content found in data")
+
+        self.logger.info(f"Found {len(articles)} total articles, {len(articles_with_content)} with content")
+
+        # Use articles with content for validation
+        articles = articles_with_content
 
         # Check for required fields and URL validation
         for article in articles:
@@ -202,32 +203,31 @@ class MCPTweetProcessorWorkflow:
             if not article_title:
                 raise ValueError(f"Article #{article_number} missing 'title' field")
 
-            # Article #5 is allowed to have no URL (incomplete in document)
-            if not article_url and article_number != 5:
+            # All articles in the validation set should have URLs (we filtered out incomplete ones)
+            if not article_url:
                 raise ValueError(f"Article #{article_number} missing 'url' field")
 
-            # Validate URL format and mapping (only if URL exists)
-            if article_url:
-                try:
-                    self.validate_url_format(article_url, article_number)
-                    self.validate_article_url(article_number, article_url)
-                except ValueError as e:
-                    raise ValueError(f"Article #{article_number} validation failed: {str(e)}")
-            elif article_number == 5:
-                # Article #5 has no URL - this is expected
-                self.logger.info(f"Article #{article_number} has no URL (incomplete article)")
-            else:
-                raise ValueError(f"Article #{article_number} missing 'url' field")
+            # Validate URL format and mapping
+            try:
+                self.validate_url_format(article_url, article_number)
+                self.validate_article_url(article_number, article_url)
+            except ValueError as e:
+                raise ValueError(f"Article #{article_number} validation failed: {str(e)}")
 
         # Check for duplicate article numbers
         article_numbers = [article['number'] for article in articles]
         if len(set(article_numbers)) != len(article_numbers):
             raise ValueError(f"Duplicate article numbers found: {article_numbers}")
 
-        # Check for duplicate URLs
+        # Check for duplicate URLs and warn (but don't fail)
         article_urls = [article['url'] for article in articles]
-        if len(set(article_urls)) != len(article_urls):
-            raise ValueError(f"Duplicate URLs found: {article_urls}")
+        unique_urls = set(article_urls)
+        if len(unique_urls) != len(article_urls):
+            duplicate_urls = [url for url in article_urls if article_urls.count(url) > 1]
+            duplicate_articles = [f"#{a['number']}" for a in articles if a['url'] in duplicate_urls]
+            self.logger.warning(f"Duplicate URLs detected for articles {duplicate_articles}: {list(set(duplicate_urls))}")
+            print(f"⚠️ Warning: Duplicate URLs found for articles {duplicate_articles}")
+            print("   System will use the first occurrence of each URL for processing")
 
         # Log validation report
         self.log_url_validation_report(articles)
@@ -297,52 +297,100 @@ class MCPTweetProcessorWorkflow:
                 
                 # Step 1: Read and parse document (if not cached)
                 if not self.state.get("articles_cache"):
-                    print("📄 Step 1: Reading document from Google Drive...")
-                    articles = await self._read_and_parse_document()
+                    print("📄 Step 1: Reading articles from local file...")
+                    logger.info("=" * 60)
+                    logger.info("ARTICLE READING: Reading from local Markdown file")
+                    articles_file = os.getenv('ARTICLES_FILE', 'data/articles.md')
+                    logger.info(f"Articles file: {articles_file}")
+
+                    try:
+                        articles = await self._read_and_parse_document()
+                        logger.info(f"Successfully read {len(articles)} articles from local file")
+
+                        # Log article summary
+                        article_numbers = [a.get('number') for a in articles]
+                        logger.info(f"Article numbers detected: {article_numbers}")
+
+                        articles_with_content = [a for a in articles if a.get('word_count', 0) > 0]
+                        logger.info(f"Articles with content: {len(articles_with_content)}/{len(articles)}")
+
+                        articles_with_urls = [a for a in articles if a.get('has_url', False)]
+                        logger.info(f"Articles with URLs: {len(articles_with_urls)}/{len(articles)}")
+
+                    except Exception as e:
+                        error_msg = f"Failed to read articles from local file: {str(e)}"
+                        logger.error(error_msg)
+                        print(f"❌ {error_msg}")
+                        raise
 
                     # Validate URLs before caching
                     print("🔍 Validating article URLs...")
+                    logger.info("Starting article validation...")
                     try:
                         self._validate_articles_data(articles)
                         print("✅ All article URLs validated successfully")
-                        self.logger.info("Article URL validation passed")
+                        logger.info("✅ Article URL validation passed")
                     except ValueError as e:
                         error_msg = f"Article validation failed: {str(e)}"
                         print(f"❌ {error_msg}")
-                        self.logger.error(error_msg)
+                        logger.error(f"❌ {error_msg}")
                         raise
 
                     self.state["articles_cache"] = articles
                     self._save_state()
                     print(f"✓ Found {len(articles)} articles")
-                    logger.info(f"Loaded {len(articles)} articles from Google Drive")
+                    logger.info(f"✅ Cached {len(articles)} articles to workflow state")
+                    logger.info("=" * 60)
                 else:
                     articles = self.state["articles_cache"]
                     print(f"✓ Using cached articles ({len(articles)} total)")
-                    logger.info(f"Using cached articles: {len(articles)} total")
+                    logger.info("=" * 60)
+                    logger.info("ARTICLE READING: Using cached articles")
+                    logger.info(f"Cached article count: {len(articles)}")
+
+                    # Log cache details
+                    article_numbers = [a.get('number') for a in articles]
+                    logger.info(f"Cached article numbers: {article_numbers}")
+
+                    articles_with_content = [a for a in articles if a.get('word_count', 0) > 0]
+                    logger.info(f"Cached articles with content: {len(articles_with_content)}/{len(articles)}")
 
                     # Validate cached articles
                     try:
                         self._validate_articles_data(articles)
-                        self.logger.info("Cached article URL validation passed")
+                        logger.info("✅ Cached article validation passed")
                     except ValueError as e:
                         error_msg = f"Cached article validation failed: {str(e)}"
-                        self.logger.error(error_msg)
+                        logger.error(f"⚠️ {error_msg}")
                         print(f"⚠️ Warning: {error_msg}")
                         # Don't raise here as we want to continue with cached data
 
+                    logger.info("=" * 60)
+
+                # Get processable articles (with content and URLs)
+                processable_articles = self._get_processable_articles(articles)
+                if not processable_articles:
+                    raise ValueError("No processable articles found (articles with content and URLs)")
+
                 print()
-                
+
                 # Step 2: Get current article to post
                 current_article_num = self.state["current_article"]
                 current_variation = self.state["current_variation"]
-                
+
                 print(f"📝 Step 2: Processing Article #{current_article_num}, Variation {current_variation}")
                 logger.info(f"Processing Article #{current_article_num}, Variation {current_variation}")
-                
-                article = next((a for a in articles if a["number"] == current_article_num), None)
+
+                article = next((a for a in processable_articles if a["number"] == current_article_num), None)
                 if not article:
-                    raise ValueError(f"Article #{current_article_num} not found")
+                    # Try to find the article in all articles and provide helpful error
+                    article_in_all = next((a for a in articles if a["number"] == current_article_num), None)
+                    if article_in_all:
+                        if not article_in_all.get('has_url', False):
+                            raise ValueError(f"Article #{current_article_num} found but has no URL (incomplete article)")
+                        elif article_in_all.get('word_count', 0) == 0:
+                            raise ValueError(f"Article #{current_article_num} found but has no content")
+                    raise ValueError(f"Article #{current_article_num} not found in processable articles")
                 
                 print(f"   Title: {article['title'][:60]}...")
                 print()
@@ -466,7 +514,7 @@ class MCPTweetProcessorWorkflow:
                         # Update workflow state
                         self.state["last_posted"] = datetime.now().isoformat()
                         self.state["total_posts"] += 1
-                        self._update_state_after_post(articles)
+                        self._update_state_after_post(processable_articles)
                     else:
                         raise Exception("Failed to post tweet")
                 else:
@@ -520,46 +568,36 @@ class MCPTweetProcessorWorkflow:
             }
 
     async def _read_and_parse_document(self) -> List[Dict[str, Any]]:
-        """Read and parse the newsletter document."""
-        # Check if we should use real APIs or mocks
-        use_real_apis = os.getenv('USE_REAL_APIS', 'false').lower() == 'true'
+        """Read and parse the newsletter document from local file."""
+        from parsers.article_parser import ArticleParser
 
-        if use_real_apis:
-            # Use real Google Drive API
-            from mcp_servers.google_drive_server import GoogleDriveClient, DocumentParser
+        # Read from local Markdown file
+        articles_file = os.getenv('ARTICLES_FILE', 'data/articles.md')
+        parser = ArticleParser(articles_file)
+        articles = parser.parse()
 
-            client = GoogleDriveClient()
-            text = client.read_document_text(self.document_id)
-            parser = DocumentParser(text)
-            articles = parser.parse()
-
-            # Convert to dict format and filter to first 5 articles
-            articles_data = [
-                {
-                    'number': a.number,
-                    'title': a.title,
-                    'url': a.url,
-                    'content': a.content,
-                    'word_count': a.word_count,
-                    'has_title': a.has_title,
-                    'has_url': a.has_url
-                }
-                for a in articles
-            ]
-
-            # Return only the first 5 articles (system is designed for 5 articles)
-            return articles_data[:5]
-        else:
-            # Use mock for testing
-            from test_system import MockDocumentParser, SAMPLE_DOCUMENT
-            parser = MockDocumentParser(SAMPLE_DOCUMENT)
-            articles = parser.parse()
-            return articles
+        # Convert to dict format
+        return [
+            {
+                'number': a.number,
+                'title': a.title,
+                'url': a.url,
+                'content': a.content,
+                'word_count': a.word_count,
+                'has_title': a.has_title,
+                'has_url': a.has_url
+            }
+            for a in articles
+        ]
 
     def _update_state_after_post(self, articles: List[Dict[str, Any]]):
         """Update workflow state after posting a tweet."""
         current_article = self.state["current_article"]
         current_variation = self.state["current_variation"]
+
+        # Filter to articles with content (same logic as validation)
+        articles_with_content = [a for a in articles if a.get('word_count', 0) > 0 and a.get('has_url', False)]
+        article_numbers = [a['number'] for a in articles_with_content]
 
         # Move to next variation
         if current_variation < 4:
@@ -567,13 +605,57 @@ class MCPTweetProcessorWorkflow:
         else:
             # Move to next article
             self.state["current_variation"] = 1
-            if current_article < len(articles):
-                self.state["current_article"] = current_article + 1
-            else:
-                # Cycle back to first article
-                self.state["current_article"] = 1
+
+            # Find current article index in the list of articles with content
+            try:
+                current_index = article_numbers.index(current_article)
+                if current_index < len(article_numbers) - 1:
+                    # Move to next article with content
+                    self.state["current_article"] = article_numbers[current_index + 1]
+                else:
+                    # Cycle back to first article with content
+                    self.state["current_article"] = article_numbers[0]
+            except ValueError:
+                # Current article not found, start with first article with content
+                self.state["current_article"] = article_numbers[0] if article_numbers else 1
 
         self._save_state()
+
+    def _get_processable_articles(self, articles: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """
+        Get articles that can be processed (have content and URLs).
+        Filters out duplicate URLs, keeping only the first occurrence.
+
+        Args:
+            articles: List of all articles from Google Drive
+
+        Returns:
+            List of articles with content and URLs, sorted by article number, with duplicates removed
+        """
+        processable = [
+            a for a in articles
+            if a.get('word_count', 0) > 0 and a.get('has_url', False) and a.get('url', '').strip()
+        ]
+
+        # Sort by article number to ensure consistent ordering
+        processable.sort(key=lambda x: x.get('number', 0))
+
+        # Remove duplicate URLs, keeping the first occurrence (lowest article number)
+        seen_urls = set()
+        unique_processable = []
+        for article in processable:
+            url = article.get('url', '').strip()
+            if url not in seen_urls:
+                seen_urls.add(url)
+                unique_processable.append(article)
+            else:
+                self.logger.info(f"Skipping Article #{article['number']} due to duplicate URL: {url}")
+
+        self.logger.info(f"Found {len(unique_processable)} unique processable articles out of {len(articles)} total")
+        for article in unique_processable:
+            self.logger.info(f"  - Article #{article['number']}: {article['title'][:50]}...")
+
+        return unique_processable
 
     async def generate_pipeline_preview(self, weeks: int = 3) -> List[Dict[str, Any]]:
         """
@@ -598,11 +680,14 @@ class MCPTweetProcessorWorkflow:
 
             # Load articles
             if not self.state.get("articles_cache"):
-                articles = await self._read_and_parse_document()
-                self.state["articles_cache"] = articles
+                all_articles = await self._read_and_parse_document()
+                self.state["articles_cache"] = all_articles
                 self._save_state()
             else:
-                articles = self.state["articles_cache"]
+                all_articles = self.state["articles_cache"]
+
+            # Get processable articles
+            articles = self._get_processable_articles(all_articles)
 
             # Get posting schedule
             posting_day = os.getenv('POSTING_DAY', 'Thursday')

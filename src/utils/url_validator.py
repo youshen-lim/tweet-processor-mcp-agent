@@ -8,10 +8,19 @@ from typing import Dict, List, Any, Optional
 
 
 class URLValidator:
-    """Utility class for validating article URLs and ensuring data integrity."""
-    
-    # Note: URL validation now uses format patterns instead of exact matching
-    # This allows flexibility while ensuring URLs follow expected LinkedIn pulse patterns
+    """
+    Utility class for validating article URLs and ensuring data integrity.
+
+    This validator dynamically handles any number of articles (1-N) and provides:
+    - URL format validation (LinkedIn pulse URLs with proper patterns)
+    - Duplicate URL detection across all articles
+    - Required field validation (number, title, url key existence)
+    - Special case handling (e.g., Article #5 can have empty URL)
+    - Comprehensive validation reporting
+
+    Note: URL validation uses format patterns instead of exact matching,
+    allowing flexibility while ensuring URLs follow expected LinkedIn pulse patterns.
+    """
     
     def __init__(self, logger: Optional[logging.Logger] = None):
         """
@@ -30,7 +39,7 @@ class URLValidator:
         which allows for flexibility while ensuring URLs follow expected patterns.
 
         Args:
-            article_number: The article number (1-5)
+            article_number: The article number (any positive integer)
             article_url: The URL to validate
 
         Returns:
@@ -39,9 +48,9 @@ class URLValidator:
         Raises:
             ValueError: If validation fails
         """
-        # Check if article number is valid
-        if article_number not in range(1, 6):
-            raise ValueError(f"Invalid article number: {article_number}. Must be 1-5.")
+        # Check if article number is valid (any positive integer)
+        if not isinstance(article_number, int) or article_number < 1:
+            raise ValueError(f"Invalid article number: {article_number}. Must be a positive integer.")
 
         # Article #5 is allowed to have no URL (incomplete in document)
         if article_number == 5 and (not article_url or not article_url.strip()):
@@ -116,18 +125,27 @@ class URLValidator:
         
         return True
     
-    def validate_articles_data(self, articles: List[Dict[str, Any]]) -> Dict[str, Any]:
+    def validate_articles_data(self, articles: List[Dict[str, Any]], expected_count: Optional[int] = None) -> Dict[str, Any]:
         """
         Comprehensive validation of articles data.
-        
+
+        This method dynamically validates any number of articles (1-N) while maintaining
+        all validation rules including format checking, duplicate detection, and special
+        case handling (e.g., Article #5 can have empty URL).
+
         Args:
             articles: List of article data to validate
-            
+            expected_count: Optional expected number of articles. If None, accepts any count >= 1.
+
         Returns:
-            Dict with validation results
-            
+            Dict with validation results including:
+                - total_articles: Total number of articles processed
+                - valid_articles: Number of articles that passed validation
+                - validation_errors: List of validation error messages
+                - validation_warnings: List of validation warning messages
+
         Raises:
-            ValueError: If validation fails
+            ValueError: If validation fails (no articles, count mismatch, or validation errors)
         """
         validation_results = {
             'total_articles': len(articles),
@@ -135,13 +153,18 @@ class URLValidator:
             'validation_errors': [],
             'validation_warnings': []
         }
-        
+
+        # Check for empty articles list
         if not articles:
             raise ValueError("No articles found in data")
-        
-        if len(articles) != 5:
-            raise ValueError(f"Expected 5 articles, found {len(articles)}")
-        
+
+        # Validate article count if expected_count is specified
+        if expected_count is not None and len(articles) != expected_count:
+            raise ValueError(f"Expected {expected_count} articles, found {len(articles)}")
+
+        # Log validation start
+        self.logger.info(f"Starting validation for {len(articles)} article(s)")
+
         # Validate each article
         for article in articles:
             article_number = article.get('number')
@@ -152,17 +175,24 @@ class URLValidator:
                 # Check required fields
                 if not article_number:
                     raise ValueError(f"Article missing 'number' field: {article}")
-                
+
                 if not article_title:
                     raise ValueError(f"Article #{article_number} missing 'title' field")
-                
-                if not article_url:
+
+                # Check if 'url' key exists (not if it's empty, as Article #5 can have empty URL)
+                if 'url' not in article:
                     raise ValueError(f"Article #{article_number} missing 'url' field")
-                
-                # Validate URL format and mapping
+
+                # Article #5 is allowed to have empty URL (special case)
+                if article_number == 5 and (not article_url or not article_url.strip()):
+                    self.logger.info(f"✅ Article #{article_number} has no URL (expected for incomplete article)")
+                    validation_results['valid_articles'] += 1
+                    continue
+
+                # Validate URL format and mapping for other articles
                 self.validate_url_format(article_url, article_number)
                 self.validate_article_url(article_number, article_url)
-                
+
                 validation_results['valid_articles'] += 1
                 
             except ValueError as e:
@@ -253,7 +283,17 @@ def validate_article_url(article_number: int, article_url: str, logger: Optional
     return validator.validate_article_url(article_number, article_url)
 
 
-def validate_articles_data(articles: List[Dict[str, Any]], logger: Optional[logging.Logger] = None) -> Dict[str, Any]:
-    """Convenience function to validate articles data."""
+def validate_articles_data(articles: List[Dict[str, Any]], expected_count: Optional[int] = None, logger: Optional[logging.Logger] = None) -> Dict[str, Any]:
+    """
+    Convenience function to validate articles data.
+
+    Args:
+        articles: List of article data to validate
+        expected_count: Optional expected number of articles. If None, accepts any count >= 1.
+        logger: Optional logger instance
+
+    Returns:
+        Dict with validation results
+    """
     validator = URLValidator(logger)
-    return validator.validate_articles_data(articles)
+    return validator.validate_articles_data(articles, expected_count)

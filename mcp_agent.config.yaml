@@ -1,4 +1,4 @@
-$schema: mcp-agent-main/schema/mcp-agent.config.schema.json
+# $schema: mcp-agent-main/schema/mcp-agent.config.schema.json  # Schema reference removed (local copy deleted)
 
 execution_engine: asyncio
 logger:

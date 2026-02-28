@@ -34,7 +34,7 @@ Tweet Processor is an intelligent automation system that transforms newsletter a
 
 ### **What It Does**
 
-- 📄 **Reads** newsletter content from Google Drive
+- 📄 **Reads** newsletter content from local Markdown files (`data/articles.md`)
 - 🧠 **Analyzes** articles using Claude Sonnet 4.5 to extract strategic insights
 - ✍️ **Generates** 4 unique tweet variations per article
 - 🐦 **Posts** tweets to Twitter/X with professional writing style
@@ -71,7 +71,7 @@ MCP Agent Cloud implements these patterns natively.
 
 **MCP Benefits:**
 - **Interoperability**: Any tool exposed by MCP servers works seamlessly
-- **Composability**: Chain together Google Drive (read) → Claude (analyze) → Twitter (post)
+- **Composability**: Chain together local files (read) → Claude (analyze) → Twitter (post)
 - **Maintainability**: MCP servers handle API complexity, your code stays clean
 - **Future-proof**: As more services adopt MCP, you can integrate them easily
 
@@ -127,7 +127,7 @@ Smart caching reduces API costs by **75%**:
 - **State Management**: Tracks posting history and automatically advances to next variation
 
 ### 🔗 **Seamless Integrations**
-- **Google Drive**: Reads newsletter content directly from Google Docs via MCP server
+- **Local Files**: Reads newsletter content from local Markdown files (`data/articles.md`)
 - **Twitter/X API**: Posts tweets automatically with OAuth 1.0a authentication via MCP server
 - **Multi-LLM Support**: Works with both Anthropic Claude and OpenAI models
 - **MCP Extensibility**: Easy to add new integrations (Slack, GitHub, databases, etc.)
@@ -151,7 +151,7 @@ Windows Desktop Application
 ├── MCP Agent Cloud Framework
 │   ├── MCPApp (application container)
 │   ├── AnthropicAugmentedLLM (Claude Sonnet 4.5)
-│   └── MCP Servers (Google Drive, Twitter)
+│   └── MCP Servers (Twitter)
 ├── Agents
 │   ├── MCPContentAnalyzerAgent (extract insights)
 │   └── MCPTweetComposerAgent (generate tweets)
@@ -162,7 +162,7 @@ Windows Desktop Application
 ### **Workflow Steps**
 
 ```
-Step 1: Read Document (Google Drive MCP)
+Step 1: Read Document (Local Files)
    ↓
 Step 2: Parse Articles
    ↓
@@ -199,14 +199,13 @@ Step 6: State Management
 ### **Prerequisites**
 
 - **Python 3.10+** (Python 3.13 recommended)
-- **Google Drive API credentials** (service account)
 - **Twitter Developer Account** with API credentials
 - **Anthropic API key** (for Claude Sonnet 4.5)
 
 ### **Installation (5 Minutes)**
 
-```bash
-# 1. Clone the repository (works on any platform)
+```powershell
+# 1. Clone the repository
 git clone https://github.com/youshen-lim/tweet-processor-mcp-agent.git
 cd tweet-processor-mcp-agent
 
@@ -218,16 +217,9 @@ cp .env.example .env
 cp mcp_agent.secrets.yaml.example mcp_agent.secrets.yaml
 # Edit .env and mcp_agent.secrets.yaml with your API keys
 
-# 4. Set up Google Drive credentials
-# See SECRETS_SETUP.md for detailed instructions
-
-# 5. Test the system
+# 4. Test the system
 python run_tweet_processor.py --preview
 ```
-
-**✅ Cross-Platform Support:** Works on Windows, macOS, and Linux
-**✅ Portable Installation:** Runs from any directory without path configuration
-**✅ Automatic Path Detection:** No manual path editing required
 
 **Detailed Setup:** See [SECRETS_SETUP.md](SECRETS_SETUP.md) for step-by-step instructions.
 
@@ -250,12 +242,14 @@ pip install -r requirements.txt
 
 **Dependencies:**
 - `mcp>=1.13.1` - Model Context Protocol SDK
-- `mcp-agent>=0.1.34` - MCP Agent Cloud framework (latest)
+- `mcp-agent>=0.1.34` - MCP Agent Cloud framework
 - `fastmcp>=2.12.4` - FastMCP framework for MCP servers
 - `anthropic>=0.48.0` - Claude API client
 - `tweepy>=4.14.0` - Twitter API client
-- `google-auth`, `google-api-python-client` - Google Drive API
 - `python-dotenv` - Environment variable management
+- `pytest>=8.0.0` - Testing framework
+- `pytest-asyncio` - Async test support
+- `pytest-mock` - Mock utilities
 
 ### **3. Set Up Secrets**
 
@@ -277,12 +271,8 @@ cp mcp_agent.secrets.yaml.example mcp_agent.secrets.yaml
 ```bash
 # LLM Provider
 LLM_PROVIDER=anthropic
-ANTHROPIC_API_KEY=your_anthropic_api_key_here
+ANTHROPIC_API_KEY=sk-ant-api03-YOUR-KEY-HERE
 ANTHROPIC_MODEL=claude-3-5-sonnet-20241022
-
-# Google Drive
-GOOGLE_DRIVE_DOCUMENT_ID=YOUR-DOCUMENT-ID
-GOOGLE_DRIVE_CREDENTIALS_PATH=credentials/google-drive-credentials.json
 
 # Twitter API
 TWITTER_API_KEY=YOUR-API-KEY
@@ -311,10 +301,6 @@ logger:
     - type: console
 
 mcp_servers:
-  google_drive:
-    command: python
-    args: ["src/mcp_servers/google_drive_server.py"]
-  
   twitter:
     command: python
     args: ["src/mcp_servers/twitter_server.py"]
@@ -372,33 +358,60 @@ python run_tweet_processor.py --status
 
 ```
 tweet-processor-mcp-agent/
-├── run_tweet_processor.py          # Main entry point
+├── run_tweet_processor.py          # Main entry point (--post, --preview, --pipeline, --status)
+├── run_article_analyzer.py         # Article pre-analyzer (--analyze-all, --analyze-next, --status)
+├── run_tweet_processor.bat         # Windows Task Scheduler automation
+├── run_article_analyzer.bat        # Windows Task Scheduler automation
+├── run_tweet_processor_timeout.bat # Timeout-protected runner (10 min)
+├── setup_analyzer_task.ps1         # PowerShell Task Scheduler setup
 ├── requirements.txt                # Python dependencies
+├── pytest.ini                      # Test configuration
 ├── .env.example                    # Environment variables template
 ├── mcp_agent.config.yaml           # MCP Agent configuration
 ├── mcp_agent.secrets.yaml.example  # Secrets template
+├── workflow_state.json.example     # Example state file
 ├── README.md                       # This file
 ├── SECRETS_SETUP.md                # Secrets setup guide
 ├── SECURITY_GUIDE.md               # Security best practices
-├── DEPLOYMENT_GUIDE.md             # Deployment instructions
-├── DEVELOPMENT_TRANSCRIPT.md       # Development story
+├── TESTING.md                      # Test suite documentation
 ├── src/
 │   ├── agents/
-│   │   ├── mcp_content_analyzer_agent.py
-│   │   └── mcp_tweet_composer_agent.py
+│   │   ├── mcp_content_analyzer_agent.py  # 7 strategic insights extraction
+│   │   └── mcp_tweet_composer_agent.py    # 4 tweet variations per article
 │   ├── workflows/
-│   │   └── mcp_tweet_processor_workflow.py
-│   └── mcp_servers/
-│       ├── google_drive_server.py
-│       └── twitter_server.py
+│   │   └── mcp_tweet_processor_workflow.py # Core orchestration engine
+│   ├── parsers/
+│   │   ├── __init__.py
+│   │   └── article_parser.py              # Local Markdown article parser
+│   ├── mcp_servers/
+│   │   └── twitter_server.py              # Twitter API v2 client
+│   └── utils/
+│       ├── __init__.py
+│       ├── url_validator.py               # LinkedIn URL validation
+│       ├── api_timeout_handler.py         # 90s timeouts + retry with backoff
+│       └── heartbeat_monitor.py           # Stall detection (3-min threshold)
+├── tests/                          # 112 tests, 100% pass rate
+│   ├── conftest.py                 # 12 reusable test fixtures
+│   ├── test_article_parser.py      # 23 tests
+│   ├── test_tweet_composer.py      # 16 tests
+│   ├── test_url_validator.py       # 26 tests
+│   ├── test_url_integrity.py       # 7 tests
+│   ├── test_edge_cases.py          # 22 tests
+│   ├── test_workflow_state.py      # 8 tests
+│   ├── test_integration_workflow.py # 5 tests
+│   └── test_workflow_integration.py # 5 tests
+├── data/
+│   └── articles.md                 # Newsletter articles (Markdown format)
 ├── credentials/
-│   ├── README.md                   # Credentials setup guide
-│   └── google-drive-credentials.json  # (gitignored)
+│   └── README.md                   # Credentials setup guide
 ├── docs/
 │   ├── TWITTER_API_SETUP_GUIDE.md
 │   └── TWITTER_QUICK_START.md
-└── logs/
-    └── mcp_agent.log               # (gitignored)
+├── tools/
+│   └── document_analyzer.py        # Document validation utility
+├── examples/
+│   └── sample_tweet_generation.py  # Usage example
+└── logs/                           # (gitignored)
 ```
 
 ---
@@ -428,18 +441,22 @@ cp mcp_agent.secrets.yaml.example mcp_agent.secrets.yaml
 ### **Testing**
 
 ```powershell
+# Run the full test suite (112 tests)
+python -m pytest tests/ -v
+
+# Run specific test categories
+python -m pytest tests/ -v -m "unit"
+python -m pytest tests/ -v -m "integration"
+python -m pytest tests/ -v -m "edge_case"
+
 # Test with preview mode (safe - no posting)
 python run_tweet_processor.py --preview
-
-# Test Google Drive connection
-python -c "from src.mcp_servers.google_drive_server import GoogleDriveMCPServer; print('✅ Google Drive MCP Server loaded')"
-
-# Test Twitter connection (requires credentials)
-python test_twitter_connection.py
 
 # Generate test pipeline
 python run_tweet_processor.py --pipeline
 ```
+
+See [TESTING.md](TESTING.md) for complete test documentation.
 
 ### **Code Structure**
 
@@ -450,9 +467,16 @@ python run_tweet_processor.py --pipeline
 **Workflows** (`src/workflows/`):
 - `mcp_tweet_processor_workflow.py` - Orchestrates the entire tweet generation process
 
+**Parsers** (`src/parsers/`):
+- `article_parser.py` - Parses local Markdown files into structured Article objects
+
 **MCP Servers** (`src/mcp_servers/`):
-- `google_drive_server.py` - MCP server for reading Google Drive documents
-- `twitter_server.py` - MCP server for posting tweets
+- `twitter_server.py` - Twitter API v2 client with URL length calculation
+
+**Utilities** (`src/utils/`):
+- `url_validator.py` - LinkedIn URL format validation and uniqueness checks
+- `api_timeout_handler.py` - 90-second async timeouts with retry and exponential backoff
+- `heartbeat_monitor.py` - Thread-based stall detection with 3-minute threshold
 
 ### **Adding New Features**
 
@@ -474,20 +498,16 @@ python run_tweet_processor.py --pipeline
 
 ## 🚀 Deployment
 
-### **Local Deployment (Cross-Platform)**
+### **Local Deployment (Current Setup)**
 
-**Desktop Application (Windows, macOS, Linux):**
+**Windows Desktop Application:**
 - Run manually via `python run_tweet_processor.py`
-- **Windows:** Schedule with Task Scheduler using portable batch scripts
-- **macOS:** Schedule with Automator, launchd, or cron (see [macOS Setup Guide](docs/MACOS_AUTOMATOR_SETUP.md))
-- **Linux:** Schedule with cron or systemd timers
+- Schedule with Windows Task Scheduler (optional)
 - Full control over when tweets are generated
 
 **Advantages:**
 - ✅ Complete control over execution
 - ✅ Manual review before posting
-- ✅ Works on any operating system
-- ✅ Portable installation (no hardcoded paths)
 - ✅ No cloud costs
 - ✅ Easy debugging
 
@@ -507,7 +527,7 @@ python run_tweet_processor.py --pipeline
 
 ## 📝 Document Format
 
-Your Google Drive document should follow this structure:
+Your local articles file (`data/articles.md`) should follow this structure:
 
 ```
 Article #1: Title of First Article
@@ -544,17 +564,17 @@ See [docs/EXAMPLE_NEWSLETTER.md](docs/EXAMPLE_NEWSLETTER.md) for a complete exam
 - Verify `.env` file exists in project root
 - Check `ANTHROPIC_API_KEY` is set in `.env`
 - Ensure no extra spaces around the `=` sign
-- Verify the key starts with `your_anthropic_api_key_starts_with_sk-ant-api03-`
+- Verify the key starts with `sk-ant-api03-`
 
 #### **"Twitter 403 Forbidden"**
 - Access token doesn't have write permissions
 - Regenerate access token with "Read and Write" permissions
 - See [docs/TWITTER_API_SETUP_GUIDE.md](docs/TWITTER_API_SETUP_GUIDE.md)
 
-#### **"Google Drive permission denied"**
-- Service account email not shared with document
-- Share document with service account email (from JSON file)
-- Set permission to "Viewer" or higher
+#### **"Cannot read articles file"**
+- Verify `data/articles.md` file exists
+- Check file permissions (read access required)
+- Ensure file is not empty or corrupted
 
 #### **"Tweet exceeds 280 characters"**
 - This should be automatically handled
@@ -658,8 +678,10 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 - [SECRETS_SETUP.md](SECRETS_SETUP.md) - Complete secrets setup guide
 - [SECURITY_GUIDE.md](SECURITY_GUIDE.md) - Security best practices
-- [DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md) - Deployment options
-- [DEVELOPMENT_TRANSCRIPT.md](DEVELOPMENT_TRANSCRIPT.md) - Development journey
+- [TESTING.md](TESTING.md) - Test suite documentation
+- [QUICK_START_GUIDE.md](QUICK_START_GUIDE.md) - Quick start guide
+- [ARTICLE_MANAGEMENT_GUIDE.md](ARTICLE_MANAGEMENT_GUIDE.md) - Article data management
+- [TROUBLESHOOTING_GUIDE.md](TROUBLESHOOTING_GUIDE.md) - Troubleshooting guide
 - [docs/TWITTER_API_SETUP_GUIDE.md](docs/TWITTER_API_SETUP_GUIDE.md) - Twitter API setup
 
 ### **External Resources**
@@ -667,7 +689,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - [MCP Agent Cloud Documentation](https://docs.mcp-agent.com/cloud/overview)
 - [Anthropic API Documentation](https://docs.anthropic.com/)
 - [Twitter API Documentation](https://developer.twitter.com/en/docs)
-- [Google Drive API Documentation](https://developers.google.com/drive)
+
 
 ### **Related Projects**
 
@@ -678,9 +700,9 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 📊 Project Status
 
-**Current Version:** 1.0.0
-**Status:** Production-ready for local use
-**Last Updated:** October 16, 2025
+**Current Version:** 2.0.0
+**Status:** Production-ready, running weekly automated execution
+**Last Updated:** February 28, 2026
 
 ### **Roadmap**
 
@@ -689,7 +711,12 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - [x] Professional writing style enforcement
 - [x] State management and caching
 - [x] Pipeline preview feature
-- [ ] Automated testing suite
+- [x] Automated testing suite (112 tests)
+- [x] Local Markdown article parser (replaced Google Drive)
+- [x] Article pre-analyzer with caching
+- [x] Reliability utilities (timeouts, retries, heartbeat)
+- [x] Windows Task Scheduler automation
+- [x] URL validation and integrity checks
 - [ ] Cloud deployment templates
 - [ ] Multi-account support
 - [ ] Analytics dashboard
