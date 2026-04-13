@@ -1,0 +1,52 @@
+# Environment and secrets
+.env
+.env.local
+*.secrets.yaml
+*.secrets.yml
+credentials/*.json
+
+# Generated data
+workflow_state.json
+all_tweets.json
+tweet_pipeline.json
+tweet_pipeline.md
+last_post_result.json
+post_history.json
+
+# Execution logs
+*.log
+logs/
+posting_log.txt
+analysis_log.txt
+
+# Source documents (local only)
+data/articles.docx
+
+# Python
+__pycache__/
+*.py[cod]
+*.class
+*.egg-info/
+dist/
+build/
+venv/
+env/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# IDE
+.vscode/
+.idea/
+*.sublime-workspace
+
+# OS
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Temporary
+*.tmp
+*.temp
+*.bak
+temp/
