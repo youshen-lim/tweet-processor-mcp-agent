@@ -94,6 +94,19 @@ python run_tweet_processor.py --preview
 python run_tweet_processor.py --pipeline
 ```
 
+### **Optional X/Twitter Source Context:**
+
+If you keep reviewed public X/Twitter notes for audience framing, set
+`SOURCE_CONTEXT_FILE=data/source_context.md` in `.env` and preview first:
+
+```bash
+python run_tweet_processor.py --preview
+```
+
+The article insight remains the source of truth. Source context only shapes
+word choice, objections, and audience angle. See
+[`docs/X_SOURCE_CONTEXT_GUIDE.md`](docs/X_SOURCE_CONTEXT_GUIDE.md).
+
 ### **Check Logs:**
 - **Execution log:** `posting_log.txt`
 - **MCP Agent logs:** `logs/tweet-processor-*.jsonl`

@@ -26,6 +26,7 @@ from mcp_agent.agents.agent import Agent
 # Import MCP-based agents
 from agents.mcp_content_analyzer_agent import MCPContentAnalyzerAgent, analyze_article_content
 from agents.mcp_tweet_composer_agent import MCPTweetComposerAgent, compose_tweets_for_article
+from utils.source_context import load_optional_source_context
 
 # Configuration
 DOCUMENT_ID = None  # Legacy constant - no longer used (migrated to local file storage)
@@ -546,6 +547,11 @@ class MCPTweetProcessorWorkflow:
                     print(f"❌ {error_msg}")
                     raise
 
+                source_context = load_optional_source_context(os.getenv('SOURCE_CONTEXT_FILE'))
+                if source_context:
+                    print("✓ Loaded optional source context for tweet framing")
+                    logger.info("Loaded optional source context for tweet framing")
+
                 # Use MCP Tweet Composer Agent
                 tweets = await self.tweet_composer.compose_multiple_variations(
                     article_number=article_number,
@@ -553,7 +559,8 @@ class MCPTweetProcessorWorkflow:
                     article_url=article_url,
                     insights=analysis['key_insights'],
                     themes=analysis.get('themes', []),
-                    num_variations=4
+                    num_variations=4,
+                    source_context=source_context
                 )
                 
                 # Get the specific variation
@@ -924,4 +931,3 @@ class MCPTweetProcessorWorkflow:
             'friday': 4, 'saturday': 5, 'sunday': 6
         }
         return days.get(day_name.lower(), 0)  # Default to Monday
-

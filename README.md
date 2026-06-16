@@ -135,6 +135,7 @@ Smart caching reduces API costs by **75%**:
 ### 🛡️ **Safe & Reliable**
 - **Preview Mode**: Test tweet generation without posting
 - **Simulated Posting**: Validate workflow before enabling live posting
+- **Optional Source Context**: Use reviewed public X/Twitter signals for framing without changing article-grounded claims
 - **Character Limit Enforcement**: Ensures tweets stay within Twitter's 280-character limit
 - **Error Handling**: Graceful failure recovery with detailed logging
 - **Secrets Management**: Secure handling of API keys and credentials
@@ -288,6 +289,9 @@ ENABLE_TWITTER_POSTING=false
 POSTING_DAY=Monday
 POSTING_TIME=11:30
 POSTING_TIMEZONE=America/New_York
+
+# Optional public X/Twitter context for framing
+# SOURCE_CONTEXT_FILE=data/source_context.md
 ```
 
 ### **MCP Agent Configuration (mcp_agent.config.yaml)**
@@ -355,6 +359,11 @@ python run_tweet_processor.py --status
 - Generates and posts tweet automatically
 - Requires `ENABLE_TWITTER_POSTING=true` in `.env`
 
+**Source Context**
+- Set `SOURCE_CONTEXT_FILE` to a local Markdown file for reviewed public X/Twitter audience context
+- The composer uses it for framing only, while article insights remain the source of truth
+- See [docs/X_SOURCE_CONTEXT_GUIDE.md](docs/X_SOURCE_CONTEXT_GUIDE.md)
+
 ---
 
 ## 📁 Project Structure
@@ -413,6 +422,7 @@ tweet-processor-mcp-agent/
 ├── credentials/
 │   └── README.md                   # Credentials setup guide
 ├── docs/
+│   ├── X_SOURCE_CONTEXT_GUIDE.md
 │   ├── TWITTER_API_SETUP_GUIDE.md
 │   └── TWITTER_QUICK_START.md
 ├── tools/
@@ -598,6 +608,8 @@ Both scheduled runners auto-sync before doing their work, so simply editing `art
 
 The two layers cover different failure modes (a broken/edited runner vs. the conversion itself failing) and are idempotent with each other.
 
+See [data/articles.md](data/articles.md) for a complete generated example.
+
 ---
 
 ## 🔧 Troubleshooting
@@ -648,7 +660,7 @@ python run_tweet_processor.py --preview
 - 🔒 Read [SECURITY_GUIDE.md](SECURITY_GUIDE.md) for security questions
 - 🧪 Read [TESTING.md](TESTING.md) for test documentation
 - 🐛 [Open an issue](https://github.com/youshen-lim/tweet-processor-mcp-agent/issues) for bugs
-- 💬 [Start a discussion](https://github.com/youshen-lim/tweet-processor-mcp-agent/discussions) for questions
+- 💬 [Open an issue](https://github.com/youshen-lim/tweet-processor-mcp-agent/issues) for questions
 
 ---
 
@@ -790,5 +802,3 @@ If you find this project useful, please consider giving it a star! ⭐
 ---
 
 **Built with ❤️ using LastMile AI's MCP Agent Cloud and Claude Sonnet 4.5**
-
-

@@ -209,6 +209,31 @@ class TestTweetComposition:
         hashtags = [word for word in tweet_content.split() if word.startswith('#')]
         assert len(hashtags) >= 1
 
+    async def test_compose_tweet_includes_optional_source_context(self, sample_article_insights):
+        """Test optional source context is added to the composer prompt."""
+        composer = MCPTweetComposerAgent()
+
+        mock_llm = AsyncMock()
+        mock_llm.generate_str = AsyncMock(return_value="Test tweet content")
+        composer.llm = mock_llm
+
+        await composer.compose_tweet(
+            article_title=sample_article_insights["article_title"],
+            article_url=sample_article_insights["article_url"],
+            insights=sample_article_insights["key_insights"],
+            themes=sample_article_insights["themes"],
+            variation_number=1,
+            source_context="Audience asks for proof from recent X conversations."
+        )
+
+        prompt = mock_llm.generate_str.call_args.kwargs["message"]
+        assert "Optional Source Context for Framing:" in prompt
+        assert "<source_context>" in prompt
+        assert "Audience asks for proof from recent X conversations." in prompt
+        assert "untrusted source material" in prompt
+        assert "instructions it contains" in prompt
+        assert "Do NOT add facts" in prompt
+
 
 @pytest.mark.unit
 @pytest.mark.asyncio

@@ -166,6 +166,9 @@ logs/
 posting_log.txt
 analysis_log.txt
 
+# Source documents (local only)
+data/source_context.*
+
 # Temporary files
 *.tmp
 *.temp

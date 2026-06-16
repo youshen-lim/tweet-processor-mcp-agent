@@ -2,7 +2,7 @@
 # MCP AGENT FRAMEWORK (LastMile AI)
 # =============================================================================
 # Core MCP framework and dependencies
-mcp>=1.13.1
+mcp>=1.13.1,<2.0.0
 mcp-agent>=0.1.34
 
 # Model providers for MCP Agent
