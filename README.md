@@ -408,7 +408,8 @@ tweet-processor-mcp-agent/
 │   └── articles.md                 # Generated from articles.docx (read by the app)
 ├── scripts/
 │   ├── convert_docx_to_md.py       # articles.docx → articles.md converter (--if-newer, --clear-cache, --dry-run)
-│   └── clear_article_cache.py      # Empty articles_cache in workflow_state.json
+│   ├── clear_article_cache.py      # Empty articles_cache in workflow_state.json
+│   └── sync_publish.py             # Sync publish/ public copy from root HEAD (--dry-run, --push)
 ├── credentials/
 │   └── README.md                   # Credentials setup guide
 ├── docs/
