@@ -1,6 +1,6 @@
 # 🚀 Quick Start Guide - Get Tweet Processor Running in 30 Minutes
 
-**Last Updated:** January 21, 2026
+**Last Updated:** June 14, 2026
 **Status:** Ready for Production
 
 ---
@@ -38,7 +38,7 @@ python run_tweet_processor.py --post
 1. Press `Win + R` → Type `taskschd.msc` → Enter
 2. Find task: "Tweet Processor - Weekly Posting"
 3. Right-click → Run (to test)
-4. Verify "Next Run Time" shows next Thursday at 11:30 AM ET
+4. Verify "Next Run Time" shows the next Monday run for `run_tweet_processor.bat`
 
 ---
 
@@ -49,7 +49,7 @@ After completing the 3 steps above, verify:
 - [ ] ✅ Tweet posted successfully to Twitter
 - [ ] ✅ Tweet appears on your Twitter profile
 - [ ] ✅ Windows Task Scheduler task runs without errors
-- [ ] ✅ Next run time is correct (Thursday 11:30 AM ET)
+- [ ] ✅ Next run time is correct for the Monday Task Scheduler trigger
 - [ ] ✅ `posting_log.txt` shows successful execution
 
 ---
@@ -58,7 +58,7 @@ After completing the 3 steps above, verify:
 
 ### **Automated Weekly Posting:**
 
-Every Thursday at 11:30 AM ET, your laptop will:
+Every Monday, Windows Task Scheduler will run `run_tweet_processor.bat`. The Task Scheduler trigger is the authoritative schedule for this workspace.
 
 1. Wake up (if sleeping)
 2. Run `run_tweet_processor.bat`
@@ -69,9 +69,11 @@ Every Thursday at 11:30 AM ET, your laptop will:
 
 ### **Content Schedule:**
 
-- **5 articles** × **4 variations** = **20 tweets total**
-- **1 tweet per week** = **20 weeks of content** (~5 months)
-- After 20 weeks, cycle repeats with Article #1, Variation #1
+- **20 articles** × **4 variations** = **80 tweets total**
+- **1 tweet per week** = **80 weeks of content** (~1.5 years)
+- After the last variation, the cycle repeats with Article #1, Variation #1
+
+> Articles are authored in `data/articles.docx` and converted to `data/articles.md`. See [Updating Articles](#-updating-articles) below.
 
 ---
 
@@ -96,6 +98,28 @@ python run_tweet_processor.py --pipeline
 - **Execution log:** `posting_log.txt`
 - **MCP Agent logs:** `logs/tweet-processor-*.jsonl`
 - **State file:** `workflow_state.json`
+
+---
+
+## ✍️ Updating Articles
+
+Articles are authored in **`data/articles.docx`** (Word) and converted to **`data/articles.md`**, which is what the app reads. Editing the `.docx` alone is **not enough** unless you let the converter run.
+
+**Author format in `articles.docx`** (per article):
+```
+Article #N                  (Heading 1)
+Article #N Title: <title>
+Article #N URL: : <url>
+<body paragraphs...>
+```
+
+**To publish edits:**
+```powershell
+# Convert and refresh the cache in one step
+python scripts/convert_docx_to_md.py --clear-cache
+```
+
+**Or just let automation do it:** the scheduled runners auto-convert when `articles.docx` is newer than `articles.md` (`--if-newer --clear-cache`), so you can simply edit the `.docx` and the next weekly run picks it up. The step is fail-open — if conversion fails, the last-good `articles.md` is used and the result is logged to `posting_log.txt` / `analysis_log.txt`.
 
 ---
 
@@ -183,13 +207,12 @@ Your Tweet Processor is now:
 ✅ **Cost-effective** at ~$0.08/year  
 ✅ **Reliable** with proper error handling and logging
 
-**Next tweet posts:** Thursday, 11:30 AM ET
+**Next tweet posts:** Monday, according to the Windows Task Scheduler trigger
 
 Sit back and let your AI-powered tweet automation do the work! 🚀
 
 ---
 
-**Last Updated:** January 21, 2026
+**Last Updated:** June 14, 2026
 **Framework:** LastMile AI MCP Agent Cloud
 **Model:** Claude Sonnet 4.5 (`claude-sonnet-4-5-20250929`)
-

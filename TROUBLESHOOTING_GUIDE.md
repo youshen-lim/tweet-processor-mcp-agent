@@ -2,7 +2,7 @@
 
 ## Issue Summary
 
-Based on the diagnostic analysis, two critical issues have been identified:
+Based on the diagnostic analysis, the following issues have been identified:
 
 ### 1. **Manual Execution Stall** ✅ DIAGNOSED
 **Status**: Application hangs during tweet composition phase  
@@ -12,6 +12,16 @@ Based on the diagnostic analysis, two critical issues have been identified:
 ### 2. **Task Scheduler Execution Failure** 🔍 NEEDS VERIFICATION
 **Status**: Application does not execute successfully via Windows Task Scheduler  
 **Likely Causes**: Working directory, Python path, or environment variable issues
+
+### 3. **Updated Articles in `articles.docx` Not Appearing** ✅ DIAGNOSED
+**Status**: Edits to `articles.docx` don't reach the app  
+**Root Cause**: App reads generated `articles.md`; needs conversion + cache clear  
+**Fix**: `scripts/convert_docx_to_md.py --clear-cache` (now automatic in the runners)
+
+### 4. **Article Analyzer Task Terminated (`0x41306`)** ✅ RETIRED
+**Status**: The standalone Article Analyzer was retired in July 2026 — the main workflow analyzes and caches articles inline, so the pre-analyzer was redundant (and broken; its last run exited with code 2)  
+**Fix**: Delete the "Article Analyzer - Tweet Processor" scheduled task from an elevated PowerShell:
+`Unregister-ScheduledTask -TaskName "Article Analyzer - Tweet Processor" -Confirm:$false`
 
 ---
 
@@ -151,7 +161,7 @@ if exist "venv\Scripts\activate.bat" (
    - Configure for: Windows 10
 
 2. **Triggers Tab**:
-   - Weekly, every Thursday at 11:30 AM
+   - Weekly, every Monday, matching the Task Scheduler trigger that runs `run_tweet_processor.bat`
    - Enabled: ✅
 
 3. **Actions Tab**:
@@ -167,6 +177,45 @@ if exist "venv\Scripts\activate.bat" (
    - ✅ Allow task to be run on demand
    - ✅ Run task as soon as possible after a scheduled start is missed
    - If the task fails, restart every: 1 minute, up to 3 times
+
+---
+
+## Problem 3: Updated Articles in `articles.docx` Not Appearing
+
+### Symptoms
+- You edited or added articles in `data/articles.docx`, but tweets still use the old content.
+
+### Root Cause
+The application reads **`data/articles.md`**, not `data/articles.docx`. The Markdown file is *generated* from the `.docx` by `scripts/convert_docx_to_md.py`. In addition, parsed articles are cached in `workflow_state.json` (`articles_cache`) and are only re-read when that cache is empty. So a `.docx` edit needs two things to take effect: (1) regenerate `articles.md`, and (2) clear the cache.
+
+### Solutions
+
+**Manual (one command):**
+```powershell
+python scripts/convert_docx_to_md.py --clear-cache
+```
+
+**Automatic:** the scheduled runner (`run_tweet_processor.bat`) already calls `convert_docx_to_md.py --if-newer --clear-cache` before running, so editing the `.docx` is normally enough — the next scheduled run regenerates `articles.md` and clears the cache. The step is **fail-open**: if conversion fails, the runner logs `docx-sync FAILED` to `posting_log.txt` and continues with the last-good `articles.md`.
+
+**Verify what will be parsed (no changes written):**
+```powershell
+python scripts/convert_docx_to_md.py --dry-run
+```
+
+> Requires `python-docx` (in `requirements.txt`). If the runner logs `docx-sync FAILED`, confirm it is installed: `pip install python-docx`.
+
+---
+
+## Problem 4: Article Analyzer (RETIRED July 2026)
+
+The standalone Article Analyzer (`run_article_analyzer.py` and its scheduler scripts) was retired in July 2026. It was redundant — the main tweet processor workflow performs its own analysis and caches results in `workflow_state.json` — and its last scheduled run failed (exit code 2). The scripts were removed from the repository (they remain in git history before the retirement commit).
+
+### Cleanup
+If the "Article Analyzer - Tweet Processor" scheduled task still exists, delete it from an **elevated** PowerShell (Run as administrator):
+```powershell
+Unregister-ScheduledTask -TaskName "Article Analyzer - Tweet Processor" -Confirm:$false
+```
+The weekly "Tweet Processor" task is unaffected and remains the only scheduled task this project needs.
 
 ---
 
@@ -241,4 +290,3 @@ If issues persist after trying these solutions, collect the following informatio
 2. Contents of `posting_log.txt`
 3. Latest log file from `logs/` directory
 4. Output of: `python --version` and `where python`
-

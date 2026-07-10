@@ -11,7 +11,6 @@ Usage:
     python run_tweet_processor.py --post       # Generate and post to Twitter
     python run_tweet_processor.py --preview    # Preview next tweet without updating state
     python run_tweet_processor.py --pipeline   # Generate 3-week pipeline of scheduled tweets
-    python run_tweet_processor.py --generate-all  # Generate all tweets for all articles
     python run_tweet_processor.py --status     # Show current state
 """
 
@@ -39,16 +38,8 @@ load_dotenv()
 # Add src to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
 
-# Import MCP-based workflow (new implementation)
+# Import MCP-based workflow
 from workflows.mcp_tweet_processor_workflow import MCPTweetProcessorWorkflow
-
-# Legacy import (fallback)
-try:
-    from workflows.tweet_processor_workflow import TweetProcessorWorkflow
-    LEGACY_AVAILABLE = True
-except ImportError:
-    LEGACY_AVAILABLE = False
-    TweetProcessorWorkflow = None
 
 
 def print_banner():
@@ -242,7 +233,7 @@ async def run_pipeline():
         'pipeline': [],
         'generated_at': datetime.now().isoformat(),
         'posting_schedule': {
-            'day': os.getenv('POSTING_DAY', 'Thursday'),
+            'day': os.getenv('POSTING_DAY', 'Monday'),
             'time': os.getenv('POSTING_TIME', '11:30'),
             'timezone': os.getenv('POSTING_TIMEZONE', 'America/New_York')
         }
@@ -325,44 +316,6 @@ async def run_pipeline():
     print()
 
 
-async def run_generate_all():
-    """Generate all tweets for all articles."""
-    print_banner()
-    print("📚 GENERATE ALL MODE - Generating tweets for all articles with MCP Agent Cloud")
-    print()
-
-    workflow = MCPTweetProcessorWorkflow()
-
-    print("⏳ This may take a few minutes...")
-    print()
-
-    # Note: This function needs to be implemented in MCPTweetProcessorWorkflow
-    print("⚠️  This feature is not yet implemented in MCP Agent Cloud version")
-    print("   Use --pipeline instead to generate a 3-week preview")
-    return
-
-    print(f"✅ Generated {result['total_tweets']} tweets from {result['total_articles']} articles")
-    print(f"📅 Content duration: {result['content_duration_weeks']} weeks (~{result['content_duration_weeks']/52:.1f} years)")
-    print()
-
-    # Save to file
-    filename = 'all_tweets.json'
-    with open(filename, 'w') as f:
-        json.dump(result, f, indent=2)
-
-    print(f"📁 All tweets saved to: {filename}")
-    print()
-
-    # Show first 3 tweets as preview
-    print("📝 PREVIEW (First 3 tweets):")
-    print()
-    for i, tweet in enumerate(result['tweets'][:3], 1):
-        print(f"--- Tweet {i} ---")
-        print(tweet['content'][:150] + "...")
-        print(f"Characters: {tweet['character_count']}")
-        print()
-
-
 async def main():
     """Main entry point."""
     # Parse command line arguments
@@ -377,8 +330,6 @@ async def main():
             await run_post()
         elif command == "--pipeline":
             await run_pipeline()
-        elif command == "--generate-all":
-            await run_generate_all()
         elif command in ["--help", "-h"]:
             print(__doc__)
         else:
