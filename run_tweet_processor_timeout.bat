@@ -24,6 +24,13 @@ echo Start Time: %date% %time%
 echo Timeout: 10 minutes (600 seconds)
 echo.
 
+REM Auto-sync articles from articles.docx if it was updated since last run.
+REM --if-newer is a no-op unless articles.docx is newer than articles.md;
+REM --clear-cache forces the workflow to re-read the regenerated articles.md.
+echo Checking articles.docx for updates...
+python scripts\convert_docx_to_md.py --if-newer --clear-cache
+echo.
+
 REM Run Python script with timeout using PowerShell
 REM The timeout will forcefully kill the process if it exceeds 10 minutes
 powershell -Command "& { $ErrorActionPreference = 'Stop'; try { $process = Start-Process -FilePath 'python' -ArgumentList 'run_tweet_processor.py', '--post' -PassThru -NoNewWindow -Wait -PassThru; $timeoutSeconds = 600; $waited = 0; while (!$process.HasExited -and $waited -lt $timeoutSeconds) { Start-Sleep -Seconds 1; $waited++ }; if (!$process.HasExited) { Write-Host ''; Write-Host 'WARNING: Process timed out after 10 minutes'; Write-Host 'Forcing termination...'; $process | Stop-Process -Force; Start-Sleep -Seconds 2; exit 124 } else { exit $process.ExitCode } } catch { Write-Host 'ERROR:' $_.Exception.Message; exit 1 } }"

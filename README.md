@@ -247,6 +247,7 @@ pip install -r requirements.txt
 - `anthropic>=0.48.0` - Claude API client
 - `tweepy>=4.14.0` - Twitter API client
 - `python-dotenv` - Environment variable management
+- `python-docx>=1.1.0` - Word document parsing (`articles.docx` → `articles.md` converter)
 - `pytest>=8.0.0` - Testing framework
 - `pytest-asyncio` - Async test support
 - `pytest-mock` - Mock utilities
@@ -281,8 +282,10 @@ TWITTER_ACCESS_TOKEN=YOUR-ACCESS-TOKEN
 TWITTER_ACCESS_TOKEN_SECRET=YOUR-ACCESS-TOKEN-SECRET
 
 # Posting Configuration
+# These values are used for previews/pipeline output. The actual automated run
+# cadence is controlled by Windows Task Scheduler, which runs run_tweet_processor.bat.
 ENABLE_TWITTER_POSTING=false
-POSTING_DAY=Thursday
+POSTING_DAY=Monday
 POSTING_TIME=11:30
 POSTING_TIMEZONE=America/New_York
 ```
@@ -359,11 +362,8 @@ python run_tweet_processor.py --status
 ```
 tweet-processor-mcp-agent/
 ├── run_tweet_processor.py          # Main entry point (--post, --preview, --pipeline, --status)
-├── run_article_analyzer.py         # Article pre-analyzer (--analyze-all, --analyze-next, --status)
 ├── run_tweet_processor.bat         # Windows Task Scheduler automation
-├── run_article_analyzer.bat        # Windows Task Scheduler automation
 ├── run_tweet_processor_timeout.bat # Timeout-protected runner (10 min)
-├── setup_analyzer_task.ps1         # PowerShell Task Scheduler setup
 ├── requirements.txt                # Python dependencies
 ├── pytest.ini                      # Test configuration
 ├── .env.example                    # Environment variables template
@@ -404,7 +404,11 @@ tweet-processor-mcp-agent/
 │   ├── test_url_integrity.py       # 7 tests
 │   └── test_integration_workflow.py # 5 tests
 ├── data/
-│   └── articles.md                 # Newsletter articles (Markdown format)
+│   ├── articles.docx               # Source articles (authored in Word)
+│   └── articles.md                 # Generated from articles.docx (read by the app)
+├── scripts/
+│   ├── convert_docx_to_md.py       # articles.docx → articles.md converter (--if-newer, --clear-cache, --dry-run)
+│   └── clear_article_cache.py      # Empty articles_cache in workflow_state.json
 ├── credentials/
 │   └── README.md                   # Credentials setup guide
 ├── docs/
@@ -505,7 +509,7 @@ See [TESTING.md](TESTING.md) for complete test documentation.
 
 **Windows Desktop Application:**
 - Run manually via `python run_tweet_processor.py`
-- Schedule with Windows Task Scheduler (optional)
+- Automated weekly by Windows Task Scheduler, which runs `run_tweet_processor.bat` every Monday
 - Full control over when tweets are generated
 
 **Advantages:**
@@ -528,34 +532,70 @@ See [TESTING.md](TESTING.md) for complete test documentation.
 
 ---
 
-## 📝 Document Format
+## 📝 Content Authoring (.docx → .md)
 
-Your local articles file (`data/articles.md`) should follow this structure:
+Articles are authored in **`data/articles.docx`** (Microsoft Word) and converted to **`data/articles.md`**, which is the file the application actually reads. The runtime parser (`src/parsers/article_parser.py`) only reads the Markdown file — it never opens the `.docx` directly.
+
+### Authoring format (in `articles.docx`)
+
+Each article is a block of paragraphs:
 
 ```
-Article #1: Title of First Article
-URL: https://example.com/article-1
+Article #N                       <- Heading 1 paragraph (marks a new article)
+Article #N Title: <title>
+Article #N URL: : <url>
+<body paragraph 1>
+<body paragraph 2>
+...
+```
 
-Content of the first article goes here...
+The converter emits the exact Markdown the parser expects:
 
----
+```
+## Article #N
 
-Article #2: Title of Second Article
-URL: https://example.com/article-2
+**Title:** <title>
 
-Content of the second article...
+**URL:** <url>
+
+**Content:**
+
+<content>
+
+**Metadata:**
+- Word Count: <n>
+- Status: Active
 
 ---
 ```
 
-**Format Rules:**
-- Each article starts with `Article #N: Title`
-- Next line: `URL: <article-url>`
-- Followed by article content
-- Articles separated by `---`
+### Converting to Markdown
 
-**Example Document:**
-See [docs/EXAMPLE_NEWSLETTER.md](docs/EXAMPLE_NEWSLETTER.md) for a complete example.
+Run the converter after editing the `.docx`:
+
+```powershell
+# Convert articles.docx -> articles.md and clear the cache in one step
+python scripts/convert_docx_to_md.py --clear-cache
+
+# Preview what would be written without changing anything
+python scripts/convert_docx_to_md.py --dry-run
+
+# Only convert if articles.docx is newer than articles.md (used by automation)
+python scripts/convert_docx_to_md.py --if-newer --clear-cache
+```
+
+The converter backs up the previous `articles.md` and writes **atomically** (temp file + replace), so a failure can never leave a corrupt file in place.
+
+> **Why clear the cache?** Parsed articles are cached in `workflow_state.json` (`articles_cache`) and are only re-read when that cache is empty. `--clear-cache` empties it so the regenerated `articles.md` is picked up on the next run.
+
+### Automatic sync (no manual steps)
+
+Both scheduled runners auto-sync before doing their work, so simply editing `articles.docx` is enough — the next run picks it up:
+
+- **Option A (runner):** `run_tweet_processor.bat` calls `convert_docx_to_md.py --if-newer --clear-cache` before running. This is a no-op unless the `.docx` is newer, and it is **fail-open** — it logs the result and posts the last-good `articles.md` if conversion fails, rather than skipping the week.
+- **Option B (workflow):** the workflow itself re-checks on startup (`_sync_articles_if_docx_newer`) and regenerates if the `.docx` is newer — a safety net for when the app is run directly instead of through the `.bat`.
+
+The two layers cover different failure modes (a broken/edited runner vs. the conversion itself failing) and are idempotent with each other.
 
 ---
 
@@ -701,9 +741,9 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 📊 Project Status
 
-**Current Version:** 2.1.0
+**Current Version:** 2.3.0
 **Status:** Production-ready, running weekly automated execution
-**Last Updated:** April 13, 2026
+**Last Updated:** July 10, 2026
 
 ### **Roadmap**
 
@@ -713,7 +753,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - [x] State management and caching
 - [x] Pipeline preview feature
 - [x] Local Markdown article parser (replaced Google Drive)
-- [x] Article pre-analyzer with caching
+- [x] Article pre-analyzer with caching (retired July 2026 — the main workflow analyzes and caches inline)
 - [x] Reliability utilities (timeouts, retries, heartbeat)
 - [x] Windows Task Scheduler automation
 - [x] URL validation and integrity checks
@@ -722,6 +762,11 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - [x] Improved numbered list heuristics (arbitrary length support)
 - [x] Synchronized state logic (consistent URL deduplication)
 - [x] Defensive logging (safe metadata access)
+- [x] Word (.docx) article authoring with `convert_docx_to_md.py` converter
+- [x] Automatic .docx → .md sync in scheduled runners (fail-open) and workflow
+- [x] Tweet content sanitizer (strips LLM meta-commentary such as character counts before posting)
+- [x] Tweet audit log (`logs/tweet_audit.log` records every composed and posted tweet verbatim)
+- [x] Per-run console capture in the scheduled runner (`logs/console-<timestamp>.log`)
 - [ ] Cloud deployment templates
 - [ ] Multi-account support
 - [ ] Analytics dashboard

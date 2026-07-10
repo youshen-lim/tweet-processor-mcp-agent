@@ -30,7 +30,7 @@ from agents.mcp_tweet_composer_agent import MCPTweetComposerAgent, compose_tweet
 # Configuration
 DOCUMENT_ID = None  # Legacy constant - no longer used (migrated to local file storage)
 POSTING_SCHEDULE = {
-    "day": "Thursday",
+    "day": "Monday",
     "time": "11:30",
     "timezone": "America/New_York"
 }
@@ -232,6 +232,32 @@ class MCPTweetProcessorWorkflow:
         # Log validation report
         self.log_url_validation_report(articles)
 
+    def _append_tweet_audit(self, event: str, tweet: Dict[str, Any], tweet_id: str = None):
+        """
+        Append the full tweet text to logs/tweet_audit.log.
+
+        Plain-text and written synchronously: the mcp_agent JSONL file transport
+        drops events emitted near the end of a run (the app shuts down before
+        the transport flushes), so this file is the reliable record of what was
+        composed and what was actually posted.
+        """
+        try:
+            os.makedirs('logs', exist_ok=True)
+            header = (
+                f"[{datetime.now().isoformat()}] {event.upper()} "
+                f"article=#{tweet['article_number']} "
+                f"variation={tweet['variation_number']} "
+                f"chars={tweet['character_count']}"
+            )
+            if tweet_id:
+                header += f" tweet_id={tweet_id}"
+            with open(os.path.join('logs', 'tweet_audit.log'), 'a', encoding='utf-8') as f:
+                f.write(header + "\n")
+                f.write(tweet['content'] + "\n")
+                f.write("-" * 60 + "\n")
+        except Exception as e:
+            self.logger.warning(f"Failed to write tweet audit log: {e}")
+
     def _load_state(self) -> Dict[str, Any]:
         """Load workflow state from storage."""
         try:
@@ -250,7 +276,64 @@ class MCPTweetProcessorWorkflow:
         """Save workflow state to storage."""
         with open('workflow_state.json', 'w') as f:
             json.dump(self.state, f, indent=2)
-    
+
+    def _sync_articles_if_docx_newer(self):
+        """Defense-in-depth (Option B): regenerate articles.md from articles.docx
+        when the .docx is newer, even if the scheduled .bat sync step (Option A)
+        did not run -- e.g. when invoked directly via `python run_tweet_processor.py`,
+        if the .bat sync line was removed, or if the wrong entry point was scheduled.
+
+        This is idempotent with Option A: after either path runs, articles.md is
+        newer than articles.docx, so this becomes a no-op. It is fail-open -- any
+        error (missing python-docx, unparseable .docx, locked file) is logged and
+        the existing last-good articles.md is left untouched so posting proceeds.
+        """
+        from pathlib import Path
+        try:
+            docx_path = Path('data/articles.docx')
+            md_path = Path(self.articles_file)
+
+            if not docx_path.exists():
+                return  # no source document to sync from
+            if md_path.exists() and docx_path.stat().st_mtime <= md_path.stat().st_mtime:
+                return  # articles.md already up to date -> no-op
+
+            # Lazily import the converter from scripts/ (keeps src/ decoupled).
+            scripts_dir = os.path.abspath(
+                os.path.join(os.path.dirname(__file__), '..', '..', 'scripts')
+            )
+            if scripts_dir not in sys.path:
+                sys.path.insert(0, scripts_dir)
+            from convert_docx_to_md import parse_docx, build_markdown
+
+            articles = parse_docx(docx_path)
+            if not articles:
+                self.logger.warning(
+                    "docx auto-sync: no articles parsed; keeping existing articles.md"
+                )
+                return
+
+            # Atomic write so a failure can never leave a truncated articles.md.
+            markdown = build_markdown(articles)
+            tmp_path = md_path.with_suffix(md_path.suffix + '.tmp')
+            tmp_path.write_text(markdown, encoding='utf-8')
+            os.replace(tmp_path, md_path)
+
+            # Invalidate the cache so the fresh articles.md is re-read this run.
+            self.state['articles_cache'] = []
+            self._save_state()
+            # ASCII-only output: this safety method must never crash on a console
+            # codec (e.g. cp1252) that cannot encode emoji.
+            print(f"[docx-sync] Regenerated articles.md from updated articles.docx "
+                  f"({len(articles)} articles)")
+            self.logger.info(
+                f"docx auto-sync regenerated articles.md ({len(articles)} articles)"
+            )
+        except Exception as e:
+            # Fail-open: never block posting because the sync failed.
+            print(f"[docx-sync] Skipped ({e}); using existing articles.md")
+            self.logger.warning(f"docx auto-sync skipped: {e}")
+
     async def initialize_agents(self):
         """Initialize MCP agents."""
         # Create Content Analyzer Agent
@@ -284,7 +367,11 @@ class MCPTweetProcessorWorkflow:
         print(f"🚀 Starting Tweet Processor Workflow (MCP Agent Cloud)")
         print(f"📅 Timestamp: {datetime.now().isoformat()}")
         print()
-        
+
+        # Defense-in-depth (Option B): pick up a freshly edited articles.docx even
+        # if the scheduled .bat sync (Option A) did not run. No-op when up to date.
+        self._sync_articles_if_docx_newer()
+
         try:
             # Initialize MCP App and agents
             async with self.mcp_app.run() as mcp_agent_app:
@@ -482,6 +569,16 @@ class MCPTweetProcessorWorkflow:
                 
                 print(f"✓ Tweet composed ({tweet['character_count']} characters)")
                 logger.info(f"Tweet composed: {tweet['character_count']} chars")
+                logger.info(
+                    "Composed tweet content",
+                    data={
+                        "article_number": tweet['article_number'],
+                        "variation_number": tweet['variation_number'],
+                        "character_count": tweet['character_count'],
+                        "content": tweet['content'],
+                    }
+                )
+                self._append_tweet_audit('composed', tweet)
                 print()
                 print("   Preview:")
                 for line in tweet['content'].split('\n'):
@@ -503,6 +600,16 @@ class MCPTweetProcessorWorkflow:
                         print(f"   Tweet ID: {result['tweet_id']}")
                         print(f"   URL: https://twitter.com/user/status/{result['tweet_id']}")
                         logger.info(f"Tweet posted successfully: {result['tweet_id']}")
+                        logger.info(
+                            "Posted tweet content",
+                            data={
+                                "tweet_id": result['tweet_id'],
+                                "article_number": tweet['article_number'],
+                                "variation_number": tweet['variation_number'],
+                                "content": tweet['content'],
+                            }
+                        )
+                        self._append_tweet_audit('posted', tweet, tweet_id=result['tweet_id'])
                         
                         post_result = {
                             'success': True,
@@ -675,6 +782,10 @@ class MCPTweetProcessorWorkflow:
         print(f"📅 Generating {weeks}-week pipeline preview...")
         print()
 
+        # Defense-in-depth (Option B): pick up a freshly edited articles.docx even
+        # if the scheduled .bat sync (Option A) did not run. No-op when up to date.
+        self._sync_articles_if_docx_newer()
+
         # Initialize MCP App and agents
         async with self.mcp_app.run() as mcp_agent_app:
             logger = mcp_agent_app.logger
@@ -695,7 +806,7 @@ class MCPTweetProcessorWorkflow:
             articles = self._get_processable_articles(all_articles)
 
             # Get posting schedule
-            posting_day = os.getenv('POSTING_DAY', 'Thursday')
+            posting_day = os.getenv('POSTING_DAY', 'Monday')
             posting_time = os.getenv('POSTING_TIME', '11:30')
             posting_timezone = os.getenv('POSTING_TIMEZONE', 'America/New_York')
 
@@ -812,5 +923,5 @@ class MCPTweetProcessorWorkflow:
             'monday': 0, 'tuesday': 1, 'wednesday': 2, 'thursday': 3,
             'friday': 4, 'saturday': 5, 'sunday': 6
         }
-        return days.get(day_name.lower(), 3)  # Default to Thursday
+        return days.get(day_name.lower(), 0)  # Default to Monday
 

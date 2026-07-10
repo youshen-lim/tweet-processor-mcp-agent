@@ -13,12 +13,6 @@ logger:
 # MCP Servers
 mcp:
   servers:
-    # Google Drive MCP Server (for reading newsletter articles)
-    google_drive:
-      command: "python"
-      args: ["src/mcp_servers/google_drive_server.py"]
-      description: "Access Google Drive documents for newsletter content"
-
     # Twitter MCP Server (for posting tweets)
     twitter:
       command: "python"

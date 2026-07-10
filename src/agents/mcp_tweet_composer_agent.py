@@ -78,6 +78,7 @@ Professional writing principles:
 - CONCISE SENTENCES: Avoid run-on sentences; keep sentences short and impactful
 
 Format your response as ONLY the main tweet content (no URL, no hashtags - those are added automatically).
+Do NOT include a character count, word count, labels (such as "Tweet:"), quotation marks around the tweet, code fences, or any commentary before or after the tweet text.
 """
     
     PRIMARY_HASHTAGS = ["#AI", "#DataStrategy", "#BusinessValue"]
@@ -146,6 +147,83 @@ Format your response as ONLY the main tweet content (no URL, no hashtags - those
 
         # Return only 2 hashtags total to save characters
         return hashtags + relevant_secondary[:1]
+
+    # A standalone line that is length meta-commentary rather than tweet copy,
+    # e.g. "(147 characters)", "Character count: 147", "147/280", "[147/280 chars]".
+    # A bare number alone is NOT matched; it must carry a "chars" word or an
+    # "N/M" ratio so legitimate content is never stripped.
+    _META_LINE_RE = re.compile(
+        r"""^[\(\[]?\s*
+            (?:
+                (?:character|char|word)\s*counts?\s*[:=]?\s*\d+(?:\s*/\s*\d+)?(?:\s*(?:characters?|chars?))?
+              | \d+\s*/\s*\d+(?:\s*(?:characters?|chars?))?
+              | \d+\s*(?:characters?|chars?)
+            )
+            \s*[\)\]]?\s*\.?\s*$""",
+        re.IGNORECASE | re.VERBOSE,
+    )
+
+    # Length meta-commentary appended to the end of the tweet line itself,
+    # e.g. "…drives ROI 🚀 (147 characters)" or "…drives ROI 🚀 (147/280)".
+    _TRAILING_META_RE = re.compile(
+        r"""\s*[\(\[]\s*
+            (?:
+                (?:character|char|word)\s*counts?\s*[:=]?\s*\d+(?:\s*/\s*\d+)?(?:\s*(?:characters?|chars?))?
+              | \d+\s*/\s*\d+(?:\s*(?:characters?|chars?))?
+              | \d+\s*(?:characters?|chars?)
+            )
+            \s*[\)\]]\s*$""",
+        re.IGNORECASE | re.VERBOSE,
+    )
+
+    # Leading label the model may prepend despite instructions.
+    _LEADING_LABEL_RE = re.compile(
+        r"^(?:here(?:'s|\s+is)\s+(?:your|the)\s+tweet\s*[:\-]\s*|(?:your\s+)?tweet\s*[:\-]\s*)",
+        re.IGNORECASE,
+    )
+
+    @classmethod
+    def _sanitize_tweet_content(cls, text: str) -> str:
+        """
+        Strip LLM meta-commentary from a composed tweet before it is posted.
+
+        Removes, in order: Markdown code fences, a leading "Tweet:"-style label,
+        trailing standalone character-count lines, a trailing inline count
+        annotation, and surrounding quotation marks. Legitimate tweet content
+        (including numbers such as "10x ROI" or "80%") is left untouched.
+
+        Args:
+            text: Raw LLM response.
+
+        Returns:
+            The cleaned tweet text.
+        """
+        cleaned = text.strip()
+
+        # Code fences (```lang ... ```)
+        cleaned = re.sub(r'^```[a-zA-Z]*\s*\n?', '', cleaned)
+        cleaned = re.sub(r'\n?```\s*$', '', cleaned)
+        cleaned = cleaned.strip()
+
+        # Leading "Tweet:" / "Here is your tweet:" label
+        cleaned = cls._LEADING_LABEL_RE.sub('', cleaned).strip()
+
+        # Trailing standalone meta lines (may be more than one)
+        lines = cleaned.split('\n')
+        while lines and cls._META_LINE_RE.match(lines[-1].strip()):
+            lines.pop()
+        cleaned = '\n'.join(lines).strip()
+
+        # Inline trailing count annotation on the final line
+        cleaned = cls._TRAILING_META_RE.sub('', cleaned).strip()
+
+        # Surrounding quotation marks
+        for open_q, close_q in (('"', '"'), ("'", "'"), ('“', '”'), ('‘', '’')):
+            if len(cleaned) >= 2 and cleaned.startswith(open_q) and cleaned.endswith(close_q):
+                cleaned = cleaned[1:-1].strip()
+                break
+
+        return cleaned
 
     def _check_grounding(self, insight: str, tweet_main_content: str) -> list:
         """
@@ -287,6 +365,12 @@ EXAMPLES OF HIGH-LEVEL INSIGHT TWEETS (following professional writing principles
 "Strategic fit beats technical sophistication 💡 Match AI approach to business problem, not hype"
 "Data quality compounds over time 📊 Clean data delivers 10x ROI versus complex models on messy data"
 
+OUTPUT FORMAT:
+- Return ONLY the tweet text itself
+- Do NOT include a character count, word count, or length annotation of any kind
+- Do NOT wrap the tweet in quotation marks or code fences
+- Do NOT add labels (such as "Tweet:") or commentary before or after the tweet
+
 YOUR TWEET (MAX {available_chars} chars):
 """
 
@@ -300,8 +384,12 @@ YOUR TWEET (MAX {available_chars} chars):
                 self.llm.generate_str(message=prompt),
                 timeout=90.0
             )
-            tweet_content = tweet_content.strip()
+            raw_response = tweet_content.strip()
+            tweet_content = self._sanitize_tweet_content(raw_response)
             print(f"✅ Received response: {len(tweet_content)} characters")
+            if tweet_content != raw_response:
+                print(f"🧹 Sanitized LLM meta-commentary out of tweet content "
+                      f"({len(raw_response)} -> {len(tweet_content)} chars)")
 
             # Grounding check: warn if the tweet introduces claims absent from the source insight
             grounding_violations = self._check_grounding(selected_insight, tweet_content)

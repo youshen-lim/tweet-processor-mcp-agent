@@ -327,3 +327,144 @@ class TestGroundingValidation:
         composer = MCPTweetComposerAgent()
         result = composer._check_grounding("some insight", "some tweet content")
         assert isinstance(result, list)
+
+
+@pytest.mark.unit
+class TestTweetContentSanitization:
+    """
+    Tests for _sanitize_tweet_content.
+
+    Regression suite for the 2026-07-06 incident where the LLM appended a
+    character-count annotation to the tweet text and it was posted verbatim.
+    """
+
+    CLEAN_TWEET = "Data quality compounds over time 📊 Clean data delivers 10x ROI"
+
+    def test_clean_tweet_unchanged(self):
+        """A well-formed response passes through untouched."""
+        result = MCPTweetComposerAgent._sanitize_tweet_content(self.CLEAN_TWEET)
+        assert result == self.CLEAN_TWEET
+
+    def test_strips_trailing_inline_char_count(self):
+        """Regression: '(147 characters)' appended on the tweet line is removed."""
+        raw = f"{self.CLEAN_TWEET} (147 characters)"
+        result = MCPTweetComposerAgent._sanitize_tweet_content(raw)
+        assert result == self.CLEAN_TWEET
+
+    def test_strips_trailing_char_count_line(self):
+        """Regression: a standalone 'Character count: 147' line is removed."""
+        raw = f"{self.CLEAN_TWEET}\nCharacter count: 147"
+        result = MCPTweetComposerAgent._sanitize_tweet_content(raw)
+        assert result == self.CLEAN_TWEET
+
+    def test_strips_ratio_annotation_line(self):
+        """A trailing '147/280' or '(147/280 chars)' line is removed."""
+        for meta in ["147/280", "(147/280)", "[147/280 chars]", "147/280 characters"]:
+            raw = f"{self.CLEAN_TWEET}\n{meta}"
+            result = MCPTweetComposerAgent._sanitize_tweet_content(raw)
+            assert result == self.CLEAN_TWEET, f"Failed to strip: {meta!r}"
+
+    def test_strips_multiple_meta_lines(self):
+        """Several trailing meta lines are all removed."""
+        raw = f"{self.CLEAN_TWEET}\n(147 chars)\nCharacter count: 147/280"
+        result = MCPTweetComposerAgent._sanitize_tweet_content(raw)
+        assert result == self.CLEAN_TWEET
+
+    def test_strips_code_fences(self):
+        """A tweet wrapped in Markdown code fences is unwrapped."""
+        raw = f"```\n{self.CLEAN_TWEET}\n```"
+        result = MCPTweetComposerAgent._sanitize_tweet_content(raw)
+        assert result == self.CLEAN_TWEET
+
+    def test_strips_code_fences_with_language_tag(self):
+        """A ```text fence with a language tag is unwrapped."""
+        raw = f"```text\n{self.CLEAN_TWEET}\n```"
+        result = MCPTweetComposerAgent._sanitize_tweet_content(raw)
+        assert result == self.CLEAN_TWEET
+
+    def test_strips_surrounding_quotes(self):
+        """Straight and curly quotes wrapping the tweet are removed."""
+        for raw in [f'"{self.CLEAN_TWEET}"', f"“{self.CLEAN_TWEET}”"]:
+            result = MCPTweetComposerAgent._sanitize_tweet_content(raw)
+            assert result == self.CLEAN_TWEET, f"Failed to unquote: {raw!r}"
+
+    def test_strips_leading_tweet_label(self):
+        """A leading 'Tweet:' or 'Here is your tweet:' label is removed."""
+        for label in ["Tweet: ", "Your tweet: ", "Here is your tweet: ", "Here's the tweet: "]:
+            raw = f"{label}{self.CLEAN_TWEET}"
+            result = MCPTweetComposerAgent._sanitize_tweet_content(raw)
+            assert result == self.CLEAN_TWEET, f"Failed to strip label: {label!r}"
+
+    def test_strips_combined_meta(self):
+        """Fences, label, quotes, and count annotation together are all removed."""
+        raw = f'```\nTweet: "{self.CLEAN_TWEET}"\n(147 characters)\n```'
+        result = MCPTweetComposerAgent._sanitize_tweet_content(raw)
+        assert result == self.CLEAN_TWEET
+
+    def test_preserves_legitimate_numbers(self):
+        """Numbers that are tweet content ('10x ROI', '80%') are not stripped."""
+        tweet = "AI success = 80% org readiness, 20% tech 🚀 Culture drives 10x results"
+        result = MCPTweetComposerAgent._sanitize_tweet_content(tweet)
+        assert result == tweet
+
+    def test_preserves_trailing_bare_number_line(self):
+        """A bare number line without a 'chars' word or ratio is NOT treated as meta."""
+        tweet = "Three pillars of AI readiness; Rank yours from 1 to\n3"
+        result = MCPTweetComposerAgent._sanitize_tweet_content(tweet)
+        assert result == tweet
+
+    def test_preserves_internal_parenthetical(self):
+        """A parenthetical that is not a count annotation survives."""
+        tweet = "Good Old Fashioned AI (GOFAI) still powers rules engines 💡"
+        result = MCPTweetComposerAgent._sanitize_tweet_content(tweet)
+        assert result == tweet
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+class TestComposeTweetSanitization:
+    """End-to-end regression: compose_tweet must sanitize the LLM response."""
+
+    async def test_char_count_annotation_never_reaches_tweet(self, sample_article_insights):
+        """Regression for 2026-07-06: an appended count never reaches the final tweet."""
+        composer = MCPTweetComposerAgent()
+
+        mock_llm = AsyncMock()
+        mock_llm.generate_str = AsyncMock(
+            return_value="Strategic fit beats technical sophistication 💡 (63 characters)"
+        )
+        composer.llm = mock_llm
+
+        tweet_content, _ = await composer.compose_tweet(
+            article_title=sample_article_insights["article_title"],
+            article_url=sample_article_insights["article_url"],
+            insights=sample_article_insights["key_insights"],
+            themes=sample_article_insights["themes"],
+            variation_number=1
+        )
+
+        assert "characters" not in tweet_content
+        assert "63" not in tweet_content
+        assert tweet_content.startswith("Strategic fit beats technical sophistication 💡")
+
+    async def test_meta_line_never_reaches_tweet(self, sample_article_insights):
+        """A standalone 'Character count' line never reaches the final tweet."""
+        composer = MCPTweetComposerAgent()
+
+        mock_llm = AsyncMock()
+        mock_llm.generate_str = AsyncMock(
+            return_value="Data quality drives AI ROI 📊\n\nCharacter count: 29/280"
+        )
+        composer.llm = mock_llm
+
+        tweet_content, _ = await composer.compose_tweet(
+            article_title=sample_article_insights["article_title"],
+            article_url=sample_article_insights["article_url"],
+            insights=sample_article_insights["key_insights"],
+            themes=sample_article_insights["themes"],
+            variation_number=1
+        )
+
+        assert "Character count" not in tweet_content
+        assert "29/280" not in tweet_content
+        assert "Data quality drives AI ROI 📊" in tweet_content
