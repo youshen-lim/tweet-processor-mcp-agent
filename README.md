@@ -720,6 +720,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ### **Documentation**
 
+- [docs/README.md](docs/README.md) - **Documentation index** (all docs, active and archived)
 - [QUICK_START_GUIDE.md](QUICK_START_GUIDE.md) - Quick start and secrets setup guide
 - [SECURITY_GUIDE.md](SECURITY_GUIDE.md) - Security best practices
 - [TESTING.md](TESTING.md) - Test suite documentation
