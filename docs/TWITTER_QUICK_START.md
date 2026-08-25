@@ -6,7 +6,7 @@
 
 Go to: https://developer.twitter.com/en/portal/dashboard
 
-1. **Find your app** (the one with API Key: `[REDACTED-TWITTER-CONSUMER-KEY]`)
+1. **Find your app** under "Projects & Apps" in the Developer Portal
 2. Click on **"Keys and tokens"** tab
 3. **Get API Secret**:
    - Under "Consumer Keys" → Click **"Regenerate"**
@@ -48,22 +48,15 @@ pip install tweepy
 
 ### **Step 4: Test Connection**
 
-```bash
-python test_twitter_connection.py
+Verify the credentials authenticate (read-only check, posts nothing):
+
+```powershell
+python -c "import os, tweepy; from dotenv import load_dotenv; load_dotenv(); c = tweepy.Client(consumer_key=os.getenv('TWITTER_API_KEY'), consumer_secret=os.getenv('TWITTER_API_SECRET'), access_token=os.getenv('TWITTER_ACCESS_TOKEN'), access_token_secret=os.getenv('TWITTER_ACCESS_TOKEN_SECRET')); print('Authenticated as:', c.get_me().data.username)"
 ```
 
 **Expected output:**
 ```
-✓ TWITTER_API_KEY: 2jokKusE...0UZof
-✓ TWITTER_API_SECRET: abc123de...234yz
-✓ TWITTER_ACCESS_TOKEN: 12345678...567890
-✓ TWITTER_ACCESS_TOKEN_SECRET: xyz987wv...gf210ed
-✓ tweepy library installed
-✓ OAuth handler created
-✓ API client initialized
-✓ Successfully authenticated!
-✓ Account Details: @your_username
-✅ TWITTER API TEST COMPLETE!
+Authenticated as: your_username
 ```
 
 ---
@@ -126,7 +119,7 @@ See detailed guide: `docs/TWITTER_API_SETUP_GUIDE.md`
 - [ ] Verified app permissions are "Read and Write"
 - [ ] Updated `.env` with all 4 credentials
 - [ ] Installed tweepy: `pip install tweepy`
-- [ ] Tested connection: `python test_twitter_connection.py`
+- [ ] Tested connection (tweepy `get_me()` check from Step 4)
 - [ ] Tested tweet generation: `python run_tweet_processor.py --preview`
 - [ ] Ready to enable real posting!
 

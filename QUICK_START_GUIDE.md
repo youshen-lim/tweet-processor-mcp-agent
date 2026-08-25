@@ -69,8 +69,8 @@ Every Monday, Windows Task Scheduler will run `run_tweet_processor.bat`. The Tas
 
 ### **Content Schedule:**
 
-- **20 articles** × **4 variations** = **80 tweets total**
-- **1 tweet per week** = **80 weeks of content** (~1.5 years)
+- **23 articles** × **4 variations** = **92 tweets total**
+- **1 tweet per week** = **92 weeks of content** (~1.75 years)
 - After the last variation, the cycle repeats with Article #1, Variation #1
 
 > Articles are authored in `data/articles.docx` and converted to `data/articles.md`. See [Updating Articles](#-updating-articles) below.
@@ -164,10 +164,10 @@ python scripts/convert_docx_to_md.py --clear-cache
 
 For detailed information, see:
 
-- **`COMPREHENSIVE_ACTION_PLAN.md`** - Complete deployment guide
-- **`TWITTER_API_FIX.md`** - Detailed Twitter setup
-- **`MCP_AGENT_CLOUD_REFACTORING_COMPLETE.md`** - Technical details
-- **`DEPLOYMENT_GUIDE.md`** - Advanced deployment options
+- **`README.md`** - Full project documentation and architecture
+- **`docs/TWITTER_API_SETUP_GUIDE.md`** - Detailed Twitter setup
+- **`TROUBLESHOOTING_GUIDE.md`** - Diagnosing failed runs
+- **`SECURITY_GUIDE.md`** - Secrets handling and publishing safety
 
 ---
 
@@ -183,7 +183,7 @@ python --version
 pip list | findstr "anthropic mcp-agent tweepy"
 
 # Test local article file access
-python -c "from utils.article_parser import ArticleParser; p = ArticleParser(); print(f'Found {len(p.get_all_articles())} articles in data/articles.md')"
+python -c "import sys; sys.path.insert(0, 'src'); from parsers.article_parser import ArticleParser; p = ArticleParser(); p.parse(); print(f'Found {p.get_total_articles()} articles in data/articles.md')"
 
 # Check current state
 python run_tweet_processor.py --status

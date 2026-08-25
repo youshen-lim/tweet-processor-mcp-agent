@@ -393,10 +393,10 @@ tweet-processor-mcp-agent/
 │       ├── url_validator.py               # LinkedIn URL validation
 │       ├── api_timeout_handler.py         # 90s timeouts + retry with backoff
 │       └── heartbeat_monitor.py           # Stall detection (3-min threshold)
-├── tests/                          # 128 tests, 100% pass rate
+├── tests/                          # 143 tests, 100% pass rate
 │   ├── conftest.py                 # Reusable test fixtures
 │   ├── test_article_parser.py      # 23 tests
-│   ├── test_tweet_composer.py      # 23 tests
+│   ├── test_tweet_composer.py      # 38 tests
 │   ├── test_url_validator.py       # 26 tests
 │   ├── test_edge_cases.py          # 22 tests
 │   ├── test_workflow_integration.py # 14 tests
@@ -441,7 +441,7 @@ python -m venv venv
 # Install dependencies
 pip install -r requirements.txt
 
-# Set up secrets (see SECRETS_SETUP.md)
+# Set up secrets (see QUICK_START_GUIDE.md)
 cp .env.example .env
 cp mcp_agent.secrets.yaml.example mcp_agent.secrets.yaml
 ```
@@ -449,7 +449,7 @@ cp mcp_agent.secrets.yaml.example mcp_agent.secrets.yaml
 ### **Testing**
 
 ```powershell
-# Run the full test suite (128 tests)
+# Run the full test suite (143 tests)
 python -m pytest tests/ -v
 
 # Run specific test categories
@@ -742,9 +742,9 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 📊 Project Status
 
-**Current Version:** 2.3.0
+**Current Version:** 2.3.1
 **Status:** Production-ready, running weekly automated execution
-**Last Updated:** July 10, 2026
+**Last Updated:** August 24, 2026
 
 ### **Roadmap**
 
@@ -758,7 +758,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - [x] Reliability utilities (timeouts, retries, heartbeat)
 - [x] Windows Task Scheduler automation
 - [x] URL validation and integrity checks
-- [x] Automated testing suite (128 tests, 100% pass rate)
+- [x] Automated testing suite (143 tests, 100% pass rate)
 - [x] Enhanced LLM response parsing (universal code fence handling)
 - [x] Improved numbered list heuristics (arbitrary length support)
 - [x] Synchronized state logic (consistent URL deduplication)

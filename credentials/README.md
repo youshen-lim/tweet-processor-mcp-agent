@@ -1,74 +1,63 @@
 # Credentials Folder
 
-This folder contains sensitive API credentials and service account keys.
+This folder is reserved for sensitive credential files and is excluded from
+version control (only this README is tracked).
 
 ## ⚠️ SECURITY WARNING
 
-**NEVER commit files in this folder to version control!**
+**NEVER commit credential files in this folder to version control!**
 
-The `.gitignore` file should include:
+The `.gitignore` file includes:
 ```
 credentials/
 credentials/*.json
 ```
 
-## 📋 Required Files
+## 📋 Current Status: no files required
 
-### 1. Google Drive Service Account Credentials
+**As of January 2026, the Tweet Processor needs no files in this folder.**
 
-**File:** `google-drive-credentials.json`
+The Google Drive integration (and its `google-drive-credentials.json` service
+account file) was removed when article sourcing moved to the local
+`data/articles.docx` → `data/articles.md` pipeline. All remaining secrets live
+in two root-level files, both gitignored:
 
-**How to obtain:**
-1. Go to [Google Cloud Console](https://console.cloud.google.com/)
-2. Create a new project or select existing project
-3. Enable Google Drive API
-4. Create a Service Account
-5. Generate and download JSON key file
-6. Rename to `google-drive-credentials.json`
-7. Place in this `credentials/` folder
-8. Share your Google Drive document with the service account email
+| Secret | Where it lives |
+|--------|----------------|
+| Anthropic API key | `.env` (`ANTHROPIC_API_KEY`) and `mcp_agent.secrets.yaml` |
+| Twitter/X API credentials (4 values) | `.env` (`TWITTER_*`) |
 
-**File structure:**
-```json
-{
-  "type": "service_account",
-  "project_id": "your-project-id",
-  "private_key_id": "...",
-  "private_key": "-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n",
-  "client_email": "your-service-account@your-project.iam.gserviceaccount.com",
-  "client_id": "...",
-  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-  "token_uri": "https://oauth2.googleapis.com/token",
-  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
-  "client_x509_cert_url": "..."
-}
-```
+Set these up by copying the templates: `.env.example` → `.env` and
+`mcp_agent.secrets.yaml.example` → `mcp_agent.secrets.yaml`. See
+[QUICK_START_GUIDE.md](../QUICK_START_GUIDE.md) and
+[docs/TWITTER_API_SETUP_GUIDE.md](../docs/TWITTER_API_SETUP_GUIDE.md).
+
+The folder is kept so that any future integration has a pre-gitignored home
+for credential files.
 
 ## 🔒 Security Best Practices
 
 1. **Never commit credentials to Git**
-   - Always verify `.gitignore` is working
+   - Always verify `.gitignore` is working: `git check-ignore -v .env`
    - Use `git status` before committing
 
 2. **Backup securely**
-   - Store credentials in encrypted password manager
-   - Keep offline backup in secure location
+   - Store credentials in an encrypted password manager
+   - Keep an offline backup in a secure location
 
 3. **Rotate regularly**
-   - Regenerate service account keys periodically
-   - Update Twitter API tokens if compromised
+   - Rotate the Anthropic key every 3-6 months, and immediately if exposed
+   - Regenerate Twitter API tokens if compromised
+   - Record the rotation date when you do
 
-4. **Limit permissions**
-   - Google Service Account: Only grant Drive read access
-   - Twitter API: Only enable required permissions
+4. **Never put real key values in documentation** — use placeholders
 
 5. **Monitor usage**
-   - Check Google Cloud Console for unusual activity
-   - Monitor Twitter API usage in Developer Portal
+   - Check the Anthropic Console for unexpected API usage
+   - Monitor Twitter API usage in the Developer Portal
 
 ## 📚 Additional Resources
 
-- [Google Drive API Setup Guide](../docs/TWITTER_API_SETUP_GUIDE.md)
+- [Twitter API Setup Guide](../docs/TWITTER_API_SETUP_GUIDE.md)
 - [Security Guide](../SECURITY_GUIDE.md)
 - [Tweet Processor Documentation](../README.md)
-

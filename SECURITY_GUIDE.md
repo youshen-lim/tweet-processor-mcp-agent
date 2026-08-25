@@ -21,7 +21,6 @@ Complete guide to protecting sensitive data and securing your Tweet Processor de
 If your API keys are exposed publicly, attackers can:
 - **Anthropic API Key:** Consume your Claude API credits (costly!)
 - **Twitter API Keys:** Post tweets on your behalf, access DMs, delete content
-- **Google Drive Credentials:** Access your Google Drive documents
 
 **Impact:** Financial loss, reputation damage, data breach
 
@@ -42,7 +41,6 @@ TWITTER_API_KEY=xxxxx...
 TWITTER_API_SECRET=xxxxx...
 TWITTER_ACCESS_TOKEN=xxxxx...
 TWITTER_ACCESS_TOKEN_SECRET=xxxxx...
-GOOGLE_DRIVE_DOCUMENT_ID=xxxxx...
 ```
 
 **Risk Level:** 🔴 **CRITICAL**
@@ -61,36 +59,23 @@ GOOGLE_DRIVE_DOCUMENT_ID=xxxxx...
 
 ---
 
-#### **2. Google Drive Credentials**
+#### **2. `mcp_agent.secrets.yaml`**
 
-**Location:** `/credentials/google-drive-credentials.json`
+**Location:** `/mcp_agent.secrets.yaml`
 
-**Contains:**
-```json
-{
-  "type": "service_account",
-  "project_id": "your-project",
-  "private_key_id": "xxxxx...",
-  "private_key": "-----BEGIN PRIVATE KEY-----\nxxxxx...",
-  "client_email": "your-service-account@project.iam.gserviceaccount.com",
-  "client_id": "xxxxx...",
-  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-  "token_uri": "https://oauth2.googleapis.com/token"
-}
-```
+**Contains:** the Anthropic API key (duplicated from `.env` for the MCP Agent
+framework).
 
 **Risk Level:** 🔴 **CRITICAL**
 
-**Exposure Impact:**
-- Full access to Google Drive documents
-- Potential access to other Google Cloud resources
-- Data exfiltration
-
 **Protection:**
-- ✅ Entire `credentials/` folder in `.gitignore`
-- ✅ Never commit to Git
-- ✅ Store backup in encrypted archive
-- ✅ Rotate credentials if exposed
+- ✅ Listed in `.gitignore`
+- ✅ Never commit to Git — use `mcp_agent.secrets.yaml.example` as the template
+- ✅ Update it together with `.env` whenever the Anthropic key rotates
+
+> **Note (Jan 2026):** the Google Drive integration and its service-account
+> JSON in `credentials/` were removed when article sourcing moved to local
+> files. The `credentials/` folder remains gitignored for future use.
 
 ---
 
@@ -285,13 +270,6 @@ git secrets --scan-history
    - Regenerate keys
    - Update `.env`
 
-3. **Google Drive Credentials:**
-   - Go to Google Cloud Console
-   - Delete old service account
-   - Create new service account
-   - Download new JSON
-   - Update `credentials/google-drive-credentials.json`
-
 ---
 
 ### **5. Secure File Permissions (Windows)**
@@ -394,7 +372,7 @@ git commit -m "Initial commit: Tweet Processor"
 
 ```bash
 # 1. Navigate to current folder
-cd "C:\Users\Youshen\Documents\augment-projects\Tweet Processor using LastMile MCP Agent Cloud"
+cd "C:\Users\Youshen\OneDrive\augment-projects\Tweet Processor using LastMile MCP Agent Cloud"
 
 # 2. Verify .gitignore exists
 type .gitignore
@@ -509,7 +487,13 @@ git push --force
 
 ---
 
-**Last Updated:** October 1, 2025  
+**Last Updated:** August 24, 2026  
 **Security Level:** Production-Ready  
 **Review Schedule:** Quarterly
+
+> **Incident note (2026-08-24):** an audit found the production Anthropic API key
+> committed in plaintext inside `docs/archive/reports/API_KEY_ROTATION_GUIDE.md`
+> since the initial commit. The key text was redacted, git history was rewritten
+> to purge it, and the key was rotated. Lesson: never paste real key values into
+> documentation, even as "find this line" examples — use placeholders.
 

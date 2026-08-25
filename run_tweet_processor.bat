@@ -29,8 +29,17 @@ echo Timestamp: %date% %time%
 echo Working Directory: %cd%
 echo.
 
+REM Use the project's virtual environment interpreter so runs are pinned to the
+REM tested package set. Falling back to system Python risks breakage from
+REM unrelated upgrades in user site-packages (this broke the 2026-08-24 run).
+set PYTHON_EXE=.venv\Scripts\python.exe
+if not exist "%PYTHON_EXE%" (
+    echo WARNING: .venv not found; falling back to system Python
+    set PYTHON_EXE=python
+)
+
 REM Check if Python is available
-python --version >nul 2>&1
+"%PYTHON_EXE%" --version >nul 2>&1
 if errorlevel 1 (
     echo ERROR: Python is not installed or not in PATH
     echo Please install Python 3.9 or higher
@@ -39,8 +48,8 @@ if errorlevel 1 (
     exit /b 1
 )
 
-echo Python version:
-python --version
+echo Python interpreter: %PYTHON_EXE%
+"%PYTHON_EXE%" --version
 echo.
 
 REM Check if .env file exists
@@ -55,13 +64,6 @@ if not exist ".env" (
 echo Configuration: .env file found
 echo.
 
-REM Activate virtual environment if it exists
-if exist "venv\Scripts\activate.bat" (
-    echo Activating virtual environment...
-    call venv\Scripts\activate.bat
-    echo.
-)
-
 REM Auto-sync articles from articles.docx if it was updated since last run.
 REM --if-newer is a no-op unless articles.docx is newer than articles.md;
 REM --clear-cache forces the workflow to re-read the regenerated articles.md.
@@ -69,7 +71,7 @@ REM Fail-open: if this step errors, we log it and still post the last-good
 REM articles.md rather than skipping the week. The workflow's Option B sync is a
 REM second safety net, and its URL validation is the final guard before posting.
 echo Checking articles.docx for updates...
-python scripts\convert_docx_to_md.py --if-newer --clear-cache
+"%PYTHON_EXE%" scripts\convert_docx_to_md.py --if-newer --clear-cache
 set SYNC_CODE=%errorlevel%
 if "%SYNC_CODE%"=="0" (
     echo [%date% %time%] docx-sync OK ^(exit=0^) >> posting_log.txt
@@ -87,7 +89,7 @@ set CONSOLE_LOG=logs\console-%RUN_TS%.log
 echo Running tweet processor...
 echo Console output captured to: %CONSOLE_LOG%
 echo.
-python run_tweet_processor.py --post > "%CONSOLE_LOG%" 2>&1
+"%PYTHON_EXE%" run_tweet_processor.py --post > "%CONSOLE_LOG%" 2>&1
 
 REM Capture exit code
 set EXIT_CODE=%errorlevel%

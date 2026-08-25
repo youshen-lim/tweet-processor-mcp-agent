@@ -10,7 +10,7 @@ This guide will help you obtain all required Twitter API credentials for the Twe
 
 You need **4 credentials** to post tweets:
 
-1. ✅ **API Key (Consumer Key)**: `[REDACTED-TWITTER-CONSUMER-KEY]` (Already have)
+1. ✅ **API Key (Consumer Key)**: `shown under "Consumer Keys" in your app` (Already have)
 2. ❓ **API Secret (Consumer Secret)**: Need to obtain
 3. ❓ **Access Token**: Need to obtain
 4. ❓ **Access Token Secret**: Need to obtain
@@ -31,7 +31,7 @@ You need **4 credentials** to post tweets:
 
 1. In the Developer Portal, look for **"Projects & Apps"** in the left sidebar
 2. Click on your project name
-3. You should see your app listed (the one with API Key: `[REDACTED-TWITTER-CONSUMER-KEY]`)
+3. You should see your app listed (the one with API Key: `shown under "Consumer Keys" in your app`)
 4. Click on the **app name** or the **gear icon** (⚙️) to access app settings
 
 ---
@@ -47,7 +47,7 @@ The API Secret was shown **only once** when you first created the app. If you di
 **Option B: If you lost it - Regenerate Keys**
 1. In your app settings, find **"Keys and tokens"** tab
 2. Under **"Consumer Keys"** section, you'll see:
-   - **API Key**: `[REDACTED-TWITTER-CONSUMER-KEY]` (visible)
+   - **API Key**: `shown under "Consumer Keys" in your app` (visible)
    - **API Secret**: `••••••••••••••••••••••••••••••••••••••••••••••••••` (hidden)
 3. Click **"Regenerate"** button next to the API Key & Secret
 4. ⚠️ **WARNING**: This will invalidate your current API Key!
@@ -107,7 +107,7 @@ TWITTER_ACCESS_TOKEN_SECRET=your_access_token_secret_here
 
 **Example** (with fake values):
 ```bash
-TWITTER_API_KEY=[REDACTED-TWITTER-CONSUMER-KEY]
+TWITTER_API_KEY=AbCd1234EfGh5678IjKl9012M
 TWITTER_API_SECRET=abc123def456ghi789jkl012mno345pqr678stu901vwx234yz
 TWITTER_ACCESS_TOKEN=1234567890-AbCdEfGhIjKlMnOpQrStUvWxYz1234567890
 TWITTER_ACCESS_TOKEN_SECRET=xyz987wvu654tsr321qpo098nml765kji432hgf210ed
@@ -151,9 +151,9 @@ TWITTER_ACCESS_TOKEN_SECRET=xyz987wvu654tsr321qpo098nml765kji432hgf210ed
 
 After updating `.env`, test the connection:
 
-```bash
-# Test Twitter API connection (without posting)
-python test_twitter_connection.py
+```powershell
+# Test Twitter API connection (read-only, posts nothing)
+python -c "import os, tweepy; from dotenv import load_dotenv; load_dotenv(); c = tweepy.Client(consumer_key=os.getenv('TWITTER_API_KEY'), consumer_secret=os.getenv('TWITTER_API_SECRET'), access_token=os.getenv('TWITTER_ACCESS_TOKEN'), access_token_secret=os.getenv('TWITTER_ACCESS_TOKEN_SECRET')); print('Authenticated as:', c.get_me().data.username)"
 ```
 
 This will verify:
@@ -203,13 +203,13 @@ This will verify:
 Before proceeding, make sure you have:
 
 - [ ] Logged into Twitter Developer Portal
-- [ ] Found your app with API Key: `[REDACTED-TWITTER-CONSUMER-KEY]`
+- [ ] Found your app with API Key: `shown under "Consumer Keys" in your app`
 - [ ] Retrieved or regenerated API Secret
 - [ ] Generated Access Token & Secret
 - [ ] Verified app permissions are "Read and Write"
 - [ ] Updated `.env` file with all 4 credentials
 - [ ] Kept `ENABLE_TWITTER_POSTING=false` for testing
-- [ ] Ready to run `python test_twitter_connection.py`
+- [ ] Ready to run the connection check from "Testing Your Credentials" above
 
 ---
 
@@ -218,7 +218,7 @@ Before proceeding, make sure you have:
 Once you have all credentials:
 
 1. Update `.env` file with all 4 credentials
-2. Run `python test_twitter_connection.py` to verify
+2. Run the connection check from "Testing Your Credentials" above to verify
 3. If test passes, you can enable real posting
 4. Run `python run_tweet_processor.py --preview` to test tweet generation
 5. When ready, set `ENABLE_TWITTER_POSTING=true` in `.env`
