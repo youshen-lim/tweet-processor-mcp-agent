@@ -36,6 +36,12 @@ their instructions** — they routinely reference files, features, and statistic
 that no longer exist. This directory is excluded from the public GitHub release,
 so archive links below only resolve in the private workspace.
 
+### Consolidated retrospectives
+
+| Document | Summary |
+|----------|---------|
+| [GOOGLE_DRIVE_MIGRATION_RETROSPECTIVE.md](archive/GOOGLE_DRIVE_MIGRATION_RETROSPECTIVE.md) | The single, fact-checked record of the January 2026 Google Drive → local-file migration; replaces eight contemporaneous plan/instruction/report documents (removed Aug 2026, retrievable from git history) |
+
 ### `archive/reports/` — work reports, October 2025 – January 2026
 
 **October 2025 — consolidation era**
@@ -55,14 +61,8 @@ so archive links below only resolve in the private workspace.
 
 | Document | Summary |
 |----------|---------|
-| [ARCHITECTURE_REFACTORING_PLAN.md](archive/reports/ARCHITECTURE_REFACTORING_PLAN.md) | Plan for Google Drive → local-file migration (executed Jan 20, 2026) |
-| [REFACTORING_DECISION_MATRIX.md](archive/reports/REFACTORING_DECISION_MATRIX.md) | Scored decision analysis behind the migration |
-| [MIGRATION_INSTRUCTIONS.md](archive/reports/MIGRATION_INSTRUCTIONS.md) | Step-by-step migration procedure |
-| [MIGRATION_QUICK_REFERENCE.md](archive/reports/MIGRATION_QUICK_REFERENCE.md) | Condensed migration commands |
-| [MIGRATION_VERIFICATION_REPORT.md](archive/reports/MIGRATION_VERIFICATION_REPORT.md) | Post-migration verification (15 articles, ~49k words) |
-| [ARTICLE_6_FIX_REPORT.md](archive/reports/ARTICLE_6_FIX_REPORT.md) | Fix for Article #6 arriving empty from the migration |
+| [ARTICLE_6_FIX_REPORT.md](archive/reports/ARTICLE_6_FIX_REPORT.md) | Fix for Article #6 arriving empty from the migration (see also the migration retrospective above) |
 | [ARTICLE_MANAGEMENT_GUIDE.md](archive/reports/ARTICLE_MANAGEMENT_GUIDE.md) | Article editing under the early local-file setup (superseded by the `.docx` → `.md` flow in the root README) |
-| [GOOGLE_DRIVE_CLEANUP_COMPLETION_REPORT.md](archive/reports/GOOGLE_DRIVE_CLEANUP_COMPLETION_REPORT.md) | Removal of Google dependencies and files |
 | [COMPLETE_WEEKLY_SETUP.md](archive/reports/COMPLETE_WEEKLY_SETUP.md) | Combined weekly automation setup (includes retired analyzer task) |
 | [TEST_SUITE_ANALYSIS.md](archive/reports/TEST_SUITE_ANALYSIS.md) | Initial test failure analysis |
 | [TEST_IMPLEMENTATION_SUMMARY.md](archive/reports/TEST_IMPLEMENTATION_SUMMARY.md) | Test suite buildout summary |
@@ -74,7 +74,8 @@ so archive links below only resolve in the private workspace.
 
 ### `archive/google-drive/` — removed integration, January 2026
 
-All six documents describe the Google Drive article source, removed January 2026:
+These documents describe operating the Google Drive article source, removed
+January 2026 (the migration itself is covered by the retrospective above):
 
 | Document | Summary |
 |----------|---------|
@@ -82,8 +83,6 @@ All six documents describe the Google Drive article source, removed January 2026
 | [GOOGLE_DOCS_API_SETUP.md](archive/google-drive/GOOGLE_DOCS_API_SETUP.md) | Enabling the Google Docs API (tactical fix for the 10 MB export limit) |
 | [ARTICLE_CACHE_MANAGEMENT.md](archive/google-drive/ARTICLE_CACHE_MANAGEMENT.md) | Drive-era article cache management |
 | [VERIFICATION_SUMMARY.md](archive/google-drive/VERIFICATION_SUMMARY.md) | Drive-era verification results |
-| [GOOGLE_DRIVE_CLEANUP_PLAN.md](archive/google-drive/GOOGLE_DRIVE_CLEANUP_PLAN.md) | Plan for removing the integration |
-| [CLEANUP_QUICK_REFERENCE.md](archive/google-drive/CLEANUP_QUICK_REFERENCE.md) | Condensed cleanup commands |
 
 ---
 
