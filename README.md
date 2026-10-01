@@ -189,7 +189,7 @@ Step 6: State Management
 - **Insight Uniqueness**: Each variation highlights a DIFFERENT key insight
 - **Title Exclusion**: Tweets focus on content insights, not article titles
 - **Strategic Focus**: Emphasizes "why it matters" over "what it is"
-- **Character Optimization**: Aggressive enforcement of 280-character limit
+- **Character Optimization**: Aggressive enforcement of 280-character limit; over-length tweets get one "shorten" rewrite before truncation is used as a last resort
 - **Caching**: Stores article analysis to avoid redundant API calls (75% cost reduction)
 
 ---
@@ -411,10 +411,10 @@ tweet-processor-mcp-agent/
 │       ├── api_timeout_handler.py         # 90s timeouts + retry with backoff
 │       ├── heartbeat_monitor.py           # Stall detection (3-min threshold)
 │       └── claude_llm.py                  # Claude wrapper: thinking/effort, refusal checks, token usage log
-├── tests/                          # 156 tests, 100% pass rate
+├── tests/                          # 160 tests, 100% pass rate
 │   ├── conftest.py                 # Reusable test fixtures
 │   ├── test_article_parser.py      # 23 tests
-│   ├── test_tweet_composer.py      # 38 tests
+│   ├── test_tweet_composer.py      # 42 tests
 │   ├── test_url_validator.py       # 26 tests
 │   ├── test_edge_cases.py          # 22 tests
 │   ├── test_workflow_integration.py # 14 tests
@@ -469,7 +469,7 @@ cp mcp_agent.secrets.yaml.example mcp_agent.secrets.yaml
 ### **Testing**
 
 ```powershell
-# Run the full test suite (156 tests)
+# Run the full test suite (160 tests)
 python -m pytest tests/ -v
 
 # Run specific test categories
@@ -780,7 +780,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - [x] Reliability utilities (timeouts, retries, heartbeat)
 - [x] Windows Task Scheduler automation
 - [x] URL validation and integrity checks
-- [x] Automated testing suite (156 tests, 100% pass rate)
+- [x] Automated testing suite (160 tests, 100% pass rate)
 - [x] Enhanced LLM response parsing (universal code fence handling)
 - [x] Improved numbered list heuristics (arbitrary length support)
 - [x] Synchronized state logic (consistent URL deduplication)
@@ -792,6 +792,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - [x] Per-run console capture in the scheduled runner (`logs/console-<timestamp>.log`)
 - [x] Migrated from Claude Sonnet 4.5 (deprecated) to Claude Sonnet 5.5
 - [x] Per-call token usage and cost log (`logs/token_usage.jsonl`)
+- [x] Shorten-rewrite retry for over-length tweets (truncation only as a fallback)
 - [ ] Cloud deployment templates
 - [ ] Multi-account support
 - [ ] Analytics dashboard

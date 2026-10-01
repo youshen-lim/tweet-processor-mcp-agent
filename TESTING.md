@@ -2,11 +2,11 @@
 
 ## Overview
 
-The Tweet Processor has a comprehensive test suite with **156 tests** achieving **100% pass rate** with **0 warnings**.
+The Tweet Processor has a comprehensive test suite with **160 tests** achieving **100% pass rate** with **0 warnings**.
 
 | Metric | Value |
 |--------|-------|
-| **Total Tests** | 156 |
+| **Total Tests** | 160 |
 | **Pass Rate** | 100% |
 | **Warnings** | 0 |
 | **Runtime** | ~90 seconds |
@@ -32,7 +32,7 @@ python -m pytest tests/ -v --tb=line -q
 | `test_article_parser.py` | 23 | Article parsing, markdown extraction, edge cases |
 | `test_url_validator.py` | 26 | URL format validation, uniqueness, article validation |
 | `test_url_integrity.py` | 7 | URL mappings, consistency across workflow |
-| `test_tweet_composer.py` | 38 | Tweet composition, hashtags, character limits |
+| `test_tweet_composer.py` | 42 | Tweet composition, hashtags, character limits, shorten retry |
 | `test_workflow_state.py` | 8 | State loading/saving, article progression |
 | `test_edge_cases.py` | 22 | Error handling, unicode, concurrent operations |
 | `test_integration_workflow.py` | 5 | End-to-end workflow execution |
@@ -169,5 +169,5 @@ markers =
 
 ---
 
-*Last updated: October 2026 (counts verified against a full 156-test run)*
+*Last updated: October 2026 (counts verified against a full 160-test run)*
 

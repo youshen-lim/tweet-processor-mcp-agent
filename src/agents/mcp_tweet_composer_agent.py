@@ -282,6 +282,51 @@ Do NOT include a character count, word count, labels (such as "Tweet:"), quotati
 
         return violations
 
+    async def _request_tweet(self, prompt: str) -> str:
+        """Send one composition prompt (90-second timeout) and return the sanitized tweet text."""
+        raw_response = (await asyncio.wait_for(
+            self.llm.generate_str(message=prompt, request_params=self.REQUEST_PARAMS),
+            timeout=90.0
+        )).strip()
+        tweet_content = self._sanitize_tweet_content(raw_response)
+        print(f"✅ Received response: {len(tweet_content)} characters")
+        if tweet_content != raw_response:
+            print(f"🧹 Sanitized LLM meta-commentary out of tweet content "
+                  f"({len(raw_response)} -> {len(tweet_content)} chars)")
+        return tweet_content
+
+    async def _shorten_tweet(self, tweet_content: str, max_chars: int) -> str:
+        """
+        Ask the model once to rewrite an over-length tweet within max_chars.
+
+        Returns the shorter of the original and the rewrite, so a retry can never
+        make things worse. Errors are reported and the original is returned, so a
+        failed retry falls back to truncation instead of failing the run.
+        """
+        print(f"✂️  Tweet is {len(tweet_content)} chars (limit {max_chars}); asking for a shorter rewrite")
+        prompt = f"""This tweet is {len(tweet_content)} characters. The limit is {max_chars} characters.
+
+Tweet:
+{tweet_content}
+
+Rewrite it in at most {max_chars} characters (aim for about {max_chars - 20}). Keep the same core insight, keep it a complete thought, and do not end with an ellipsis. Cut words rather than meaning.
+
+Keep the same rules as before: no new facts, numbers, or names; active voice; no contractions; avoid hyphens; capitalize after semicolons; at most 1 emoji.
+
+Return ONLY the rewritten tweet text, with no character count, labels, quotation marks, or commentary.
+"""
+        try:
+            shorter = await self._request_tweet(prompt)
+        except Exception as e:
+            print(f"⚠️  Shorten retry failed ({e}); falling back to truncation")
+            return tweet_content
+        if not shorter or len(shorter) >= len(tweet_content):
+            print("⚠️  Shorten retry did not produce a shorter tweet; falling back to truncation")
+            return tweet_content
+        status = "fits" if len(shorter) <= max_chars else "still over; truncation will apply"
+        print(f"✂️  Rewrite is {len(shorter)} chars ({status})")
+        return shorter
+
     async def compose_tweet(
         self,
         article_title: str,
@@ -384,17 +429,13 @@ YOUR TWEET (MAX {available_chars} chars):
         print(f"🔍 Prompt length: {len(prompt)} characters")
 
         try:
-            # Add 90-second timeout to prevent hanging
-            tweet_content = await asyncio.wait_for(
-                self.llm.generate_str(message=prompt, request_params=self.REQUEST_PARAMS),
-                timeout=90.0
-            )
-            raw_response = tweet_content.strip()
-            tweet_content = self._sanitize_tweet_content(raw_response)
-            print(f"✅ Received response: {len(tweet_content)} characters")
-            if tweet_content != raw_response:
-                print(f"🧹 Sanitized LLM meta-commentary out of tweet content "
-                      f"({len(raw_response)} -> {len(tweet_content)} chars)")
+            tweet_content = await self._request_tweet(prompt)
+
+            # Over the limit: ask once for a shorter rewrite instead of cutting the
+            # tweet off mid-sentence. If the retry fails or is still too long, the
+            # truncation below remains the fallback.
+            if len(tweet_content) > available_chars:
+                tweet_content = await self._shorten_tweet(tweet_content, available_chars)
 
             # Grounding check: warn if the tweet introduces claims absent from the source insight
             grounding_violations = self._check_grounding(selected_insight, tweet_content)

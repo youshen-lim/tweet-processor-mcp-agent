@@ -468,3 +468,64 @@ class TestComposeTweetSanitization:
         assert "Character count" not in tweet_content
         assert "29/280" not in tweet_content
         assert "Data quality drives AI ROI 📊" in tweet_content
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+class TestShortenRetry:
+    """Over-length tweets get one shorten-rewrite retry before truncation is applied."""
+
+    LONG = "Strategic alignment beats technical sophistication in every AI program " * 5  # ~360 chars
+    SHORT = "Strategic alignment beats technical sophistication in AI programs 🎯"
+
+    async def _compose(self, composer, sample_article_insights):
+        tweet_content, _ = await composer.compose_tweet(
+            article_title=sample_article_insights["article_title"],
+            article_url=sample_article_insights["article_url"],
+            insights=sample_article_insights["key_insights"],
+            themes=sample_article_insights["themes"],
+            variation_number=1
+        )
+        return tweet_content.split('\n\n')[0]
+
+    async def test_short_tweet_makes_one_call(self, sample_article_insights):
+        composer = MCPTweetComposerAgent()
+        composer.llm = AsyncMock()
+        composer.llm.generate_str = AsyncMock(return_value=self.SHORT)
+
+        main = await self._compose(composer, sample_article_insights)
+
+        assert main == self.SHORT
+        assert composer.llm.generate_str.await_count == 1
+
+    async def test_retry_rewrite_replaces_long_tweet(self, sample_article_insights):
+        composer = MCPTweetComposerAgent()
+        composer.llm = AsyncMock()
+        composer.llm.generate_str = AsyncMock(side_effect=[self.LONG, self.SHORT])
+
+        main = await self._compose(composer, sample_article_insights)
+
+        assert main == self.SHORT
+        assert not main.endswith('…')
+        assert composer.llm.generate_str.await_count == 2
+        retry_prompt = composer.llm.generate_str.await_args_list[1].kwargs["message"]
+        assert self.LONG.strip() in retry_prompt
+
+    async def test_still_long_after_retry_is_truncated(self, sample_article_insights):
+        composer = MCPTweetComposerAgent()
+        composer.llm = AsyncMock()
+        composer.llm.generate_str = AsyncMock(side_effect=[self.LONG, self.LONG[:-40]])
+
+        main = await self._compose(composer, sample_article_insights)
+
+        assert main.endswith('…')
+        assert composer.llm.generate_str.await_count == 2
+
+    async def test_failed_retry_falls_back_to_truncation(self, sample_article_insights):
+        composer = MCPTweetComposerAgent()
+        composer.llm = AsyncMock()
+        composer.llm.generate_str = AsyncMock(side_effect=[self.LONG, RuntimeError("API error")])
+
+        main = await self._compose(composer, sample_article_insights)
+
+        assert main.endswith('…')
