@@ -1,6 +1,6 @@
 # 🚀 Quick Start Guide - Get Tweet Processor Running in 30 Minutes
 
-**Last Updated:** June 14, 2026
+**Last Updated:** October 1, 2026
 **Status:** Ready for Production
 
 ---
@@ -62,7 +62,7 @@ Every Monday, Windows Task Scheduler will run `run_tweet_processor.bat`. The Tas
 
 1. Wake up (if sleeping)
 2. Run `run_tweet_processor.bat`
-3. Generate next tweet using Claude Sonnet 4.5
+3. Generate next tweet using Claude Sonnet 5.5
 4. Post to Twitter
 5. Update state for next week
 6. Log execution to `posting_log.txt`
@@ -152,11 +152,13 @@ python scripts/convert_docx_to_md.py --clear-cache
 
 ### **Current Setup (Desktop):**
 - **Hosting:** $0 (runs on your laptop)
-- **Claude Sonnet 4.5:** ~$0.0016 per tweet
+- **Claude Sonnet 5.5:** ~$0.034 per posted tweet (each article costs ~$0.136 over its 4 weekly runs: one analysis plus 4 tweet-writing calls per run)
 - **Twitter API:** Free
-- **Total per quarter:** ~$0.021 (13 tweets)
+- **Total per quarter:** ~$0.44 (13 tweets)
 
-### **Annual Cost:** ~$0.08/year 🎉
+### **Annual Cost:** ~$1.77/year
+
+Figures are measured from a dry run of all 24 articles on 2026-10-01 at Claude API list prices ($2 / $10 per million input / output tokens). Actual per-call usage and cost are logged to `logs/token_usage.jsonl`.
 
 ---
 
@@ -202,9 +204,9 @@ python run_tweet_processor.py --status
 Your Tweet Processor is now:
 
 ✅ **Fully operational** with MCP Agent Cloud framework  
-✅ **Using Claude Sonnet 4.5** for best-in-class tweet generation  
+✅ **Using Claude Sonnet 5.5** for tweet generation  
 ✅ **Automated** with Windows Task Scheduler  
-✅ **Cost-effective** at ~$0.08/year  
+✅ **Cost-effective** at ~$1.77/year  
 ✅ **Reliable** with proper error handling and logging
 
 **Next tweet posts:** Monday, according to the Windows Task Scheduler trigger
@@ -213,6 +215,6 @@ Sit back and let your AI-powered tweet automation do the work! 🚀
 
 ---
 
-**Last Updated:** June 14, 2026
+**Last Updated:** October 1, 2026
 **Framework:** LastMile AI MCP Agent Cloud
-**Model:** Claude Sonnet 4.5 (`claude-sonnet-4-5-20250929`)
+**Model:** Claude Sonnet 5.5 (`claude-sonnet-5-5`, set in `mcp_agent.config.yaml`)

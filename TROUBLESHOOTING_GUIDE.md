@@ -80,7 +80,7 @@ except asyncio.TimeoutError:
 
 ```bash
 # Test Anthropic API connectivity
-python -c "import anthropic; client = anthropic.Anthropic(api_key='YOUR_KEY'); print(client.messages.create(model='claude-sonnet-4-5-20250929', max_tokens=10, messages=[{'role':'user','content':'test'}]))"
+python -c "import anthropic; client = anthropic.Anthropic(api_key='YOUR_KEY'); print(client.messages.create(model='claude-sonnet-5-5', max_tokens=10, messages=[{'role':'user','content':'test'}]))"
 ```
 
 #### Solution 3: Add Verbose Logging
@@ -90,7 +90,7 @@ Edit `src/agents/mcp_tweet_composer_agent.py` to add debug logging:
 ```python
 # Before line 235
 print(f"🔍 Calling Anthropic API with prompt length: {len(prompt)} chars")
-print(f"🔍 Model: {os.getenv('ANTHROPIC_MODEL', 'claude-sonnet-4-5-20250929')}")
+print(f"🔍 Model: {self.llm.model}")
 
 tweet_content = await self.llm.generate_str(message=prompt)
 

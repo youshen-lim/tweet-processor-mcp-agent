@@ -15,7 +15,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 # MCP Agent Cloud imports
 from mcp_agent.agents.agent import Agent
-from mcp_agent.workflows.llm.augmented_llm_anthropic import AnthropicAugmentedLLM
+from utils.claude_llm import ClaudeLLM, claude_request_params
 
 
 @dataclass
@@ -81,6 +81,9 @@ Format your response as ONLY the main tweet content (no URL, no hashtags - those
 Do NOT include a character count, word count, labels (such as "Tweet:"), quotation marks around the tweet, code fences, or any commentary before or after the tweet text.
 """
     
+    # A tweet is ~60 output tokens; 1024 leaves room without inviting rambling.
+    REQUEST_PARAMS = claude_request_params(max_tokens=1024, effort="medium")
+
     PRIMARY_HASHTAGS = ["#AI", "#DataStrategy", "#BusinessValue"]
     SECONDARY_HASHTAGS = [
         "#MachineLearning", "#Leadership", "#TechStrategy",
@@ -115,9 +118,11 @@ Do NOT include a character count, word count, labels (such as "Tweet:"), quotati
             model: Optional model name override (defaults to config)
         """
         if not self.llm:
-            # Attach Anthropic LLM to agent
-            # Note: temperature and other params are set per-request via request_params
-            self.llm = await self.agent.attach_llm(AnthropicAugmentedLLM)
+            # Attach Claude to the agent. The model comes from mcp_agent.config.yaml
+            # (anthropic.default_model) unless overridden here.
+            self.llm = await self.agent.attach_llm(ClaudeLLM)
+            if model:
+                self.llm.default_request_params.model = model
     
     def _select_hashtags(self, themes: List[str]) -> List[str]:
         """Select appropriate hashtags based on article themes."""
@@ -375,13 +380,13 @@ YOUR TWEET (MAX {available_chars} chars):
 """
 
         # Get tweet content from LLM using MCP Agent framework with timeout
-        print(f"🔍 Calling Anthropic API (model: {os.getenv('ANTHROPIC_MODEL', 'claude-sonnet-4-5-20250929')})")
+        print(f"🔍 Calling Anthropic API (model: {self.llm.model})")
         print(f"🔍 Prompt length: {len(prompt)} characters")
 
         try:
             # Add 90-second timeout to prevent hanging
             tweet_content = await asyncio.wait_for(
-                self.llm.generate_str(message=prompt),
+                self.llm.generate_str(message=prompt, request_params=self.REQUEST_PARAMS),
                 timeout=90.0
             )
             raw_response = tweet_content.strip()

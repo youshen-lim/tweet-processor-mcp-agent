@@ -16,7 +16,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 # MCP Agent Cloud imports
 from mcp_agent.agents.agent import Agent
-from mcp_agent.workflows.llm.augmented_llm_anthropic import AnthropicAugmentedLLM
+from utils.claude_llm import ClaudeLLM, claude_request_params
 
 
 @dataclass
@@ -78,6 +78,9 @@ Format your response as JSON with this structure:
 }
 """
     
+    # The JSON analysis is ~500-700 output tokens; 4096 keeps it well clear of a cut-off.
+    REQUEST_PARAMS = claude_request_params(max_tokens=4096, effort="medium")
+
     def __init__(self, agent: Agent = None):
         """
         Initialize the Content Analyzer Agent.
@@ -105,9 +108,11 @@ Format your response as JSON with this structure:
             model: Optional model name override (defaults to config)
         """
         if not self.llm:
-            # Attach Anthropic LLM to agent
-            # Note: temperature and other params are set per-request via request_params
-            self.llm = await self.agent.attach_llm(AnthropicAugmentedLLM)
+            # Attach Claude to the agent. The model comes from mcp_agent.config.yaml
+            # (anthropic.default_model) unless overridden here.
+            self.llm = await self.agent.attach_llm(ClaudeLLM)
+            if model:
+                self.llm.default_request_params.model = model
         
     async def analyze_article(self, article: Dict[str, Any]) -> ArticleInsights:
         """
@@ -162,13 +167,13 @@ Ensure NO overlap or repetition between insights. Each must be unique and valuab
 """
 
         # Get analysis from LLM using MCP Agent framework with timeout
-        print(f"🔍 Calling Anthropic API for article analysis (model: {os.getenv('ANTHROPIC_MODEL', 'claude-sonnet-4-5-20250929')})")
+        print(f"🔍 Calling Anthropic API for article analysis (model: {self.llm.model})")
         print(f"🔍 Article: #{article['number']} - {article['title'][:50]}...")
 
         try:
             # Add 90-second timeout to prevent hanging
             response = await asyncio.wait_for(
-                self.llm.generate_str(message=prompt),
+                self.llm.generate_str(message=prompt, request_params=self.REQUEST_PARAMS),
                 timeout=90.0
             )
             print(f"✅ LLM Response received (length: {len(response)} chars)")

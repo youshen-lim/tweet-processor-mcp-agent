@@ -40,6 +40,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
 
 # Import MCP-based workflow
 from workflows.mcp_tweet_processor_workflow import MCPTweetProcessorWorkflow
+from mcp_agent.config import get_settings
 
 
 def print_banner():
@@ -88,7 +89,7 @@ async def run_status():
     print("⚙️  CONFIGURATION:")
     print(f"   Framework: MCP Agent Cloud (LastMile AI)")
     print(f"   LLM Provider: {os.getenv('LLM_PROVIDER', 'anthropic')}")
-    print(f"   Model: {os.getenv('ANTHROPIC_MODEL', 'claude-sonnet-4-5-20250929')}")
+    print(f"   Model: {get_settings().anthropic.default_model} (mcp_agent.config.yaml)")
     print(f"   Use Real APIs: {os.getenv('USE_REAL_APIS', 'false')}")
     print(f"   Enable Twitter Posting: {os.getenv('ENABLE_TWITTER_POSTING', 'false')}")
     print()

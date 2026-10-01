@@ -4,7 +4,7 @@
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![MCP Agent](https://img.shields.io/badge/MCP-Agent%20Cloud-green.svg)](https://docs.mcp-agent.com/)
-[![Claude Sonnet 4.5](https://img.shields.io/badge/Claude-Sonnet%204.5-purple.svg)](https://www.anthropic.com/)
+[![Claude Sonnet 5.5](https://img.shields.io/badge/Claude-Sonnet%205.5-purple.svg)](https://www.anthropic.com/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 ---
@@ -30,12 +30,12 @@
 
 ## 🎯 Overview
 
-Tweet Processor is an intelligent automation system that transforms newsletter articles into engaging Twitter/X content using AI. Built with **LastMile AI's MCP Agent Cloud framework** and **Claude Sonnet 4.5**, it provides a professional, maintainable solution for content automation.
+Tweet Processor is an intelligent automation system that transforms newsletter articles into engaging Twitter/X content using AI. Built with **LastMile AI's MCP Agent Cloud framework** and **Claude Sonnet 5.5**, it provides a professional, maintainable solution for content automation.
 
 ### **What It Does**
 
 - 📄 **Reads** newsletter content from local Markdown files (`data/articles.md`)
-- 🧠 **Analyzes** articles using Claude Sonnet 4.5 to extract strategic insights
+- 🧠 **Analyzes** articles using Claude Sonnet 5.5 to extract strategic insights
 - ✍️ **Generates** 4 unique tweet variations per article
 - 🐦 **Posts** tweets to Twitter/X with professional writing style
 - 📅 **Manages** posting schedule and state automatically
@@ -97,7 +97,7 @@ MCP Agent Cloud implements proven workflow patterns:
 
 | Pattern | Implementation | Benefit |
 |---------|---------------|---------|
-| **Augmented LLM** | Claude Sonnet 4.5 with MCP tools | Tool-using AI with external capabilities |
+| **Augmented LLM** | Claude Sonnet 5.5 with MCP tools | Tool-using AI with external capabilities |
 | **Prompt Chaining** | Analysis → Composition → Posting | Break complex task into manageable steps |
 | **Agent-Computer Interface** | Well-documented MCP tools | Clear, reliable tool usage |
 | **State Management** | `workflow_state.json` | Track progress, cache analyses |
@@ -150,7 +150,7 @@ Windows Desktop Application
 ├── Manual Execution (run_tweet_processor.py)
 ├── MCP Agent Cloud Framework
 │   ├── MCPApp (application container)
-│   ├── AnthropicAugmentedLLM (Claude Sonnet 4.5)
+│   ├── ClaudeLLM (Claude Sonnet 5.5, extends AnthropicAugmentedLLM)
 │   └── MCP Servers (Twitter)
 ├── Agents
 │   ├── MCPContentAnalyzerAgent (extract insights)
@@ -166,11 +166,11 @@ Step 1: Read Document (Local Files)
    ↓
 Step 2: Parse Articles
    ↓
-Step 3: Analyze Content (Claude Sonnet 4.5)
+Step 3: Analyze Content (Claude Sonnet 5.5)
    ↓  Extract 7 strategic insights per article
    ↓  Cache analysis in workflow_state.json
    ↓
-Step 4: Compose Tweet (Claude Sonnet 4.5)
+Step 4: Compose Tweet (Claude Sonnet 5.5)
    ↓  Generate 4 variations (1 per insight)
    ↓  Enforce professional writing style
    ↓  Ensure 280-character limit
@@ -200,7 +200,7 @@ Step 6: State Management
 
 - **Python 3.10+** (Python 3.13 recommended)
 - **Twitter Developer Account** with API credentials
-- **Anthropic API key** (for Claude Sonnet 4.5)
+- **Anthropic API key** (for Claude Sonnet 5.5)
 
 ### **Installation (5 Minutes)**
 
@@ -273,7 +273,7 @@ cp mcp_agent.secrets.yaml.example mcp_agent.secrets.yaml
 # LLM Provider
 LLM_PROVIDER=anthropic
 ANTHROPIC_API_KEY=sk-ant-api03-YOUR-KEY-HERE
-ANTHROPIC_MODEL=claude-sonnet-4-5-20250929
+# The model is set in mcp_agent.config.yaml, not here
 
 # Twitter API
 TWITTER_API_KEY=YOUR-API-KEY
@@ -293,25 +293,42 @@ POSTING_TIMEZONE=America/New_York
 ### **MCP Agent Configuration (mcp_agent.config.yaml)**
 
 ```yaml
-execution:
-  engine: asyncio
-
+execution_engine: asyncio
 logger:
-  level: INFO
-  transports:
-    - type: file
-      filename: logs/mcp_agent.log
-    - type: console
+  transports: [console, file]
+  level: info
+  path_settings:
+    path_pattern: "logs/tweet-processor-{unique_id}.jsonl"
 
-mcp_servers:
-  twitter:
-    command: python
-    args: ["src/mcp_servers/twitter_server.py"]
+mcp:
+  servers:
+    twitter:
+      command: "python"
+      args: ["src/mcp_servers/twitter_server.py"]
 
-model:
-  provider: anthropic
-  name: claude-sonnet-4-5-20250929
+anthropic:
+  default_model: claude-sonnet-5-5   # the only place the model is set
 ```
+
+`default_model` is the single source of truth for which Claude model runs. The
+agents call Claude through `src/utils/claude_llm.py` (`ClaudeLLM`), which sends
+the per-model thinking and effort settings (Sonnet 5.5: lowest thinking setting,
+`between_tools`, at `medium` effort), stops with a clear error on a refusal, a
+cut-off response, or an empty response, and logs every call's tokens and
+estimated cost to `logs/token_usage.jsonl`.
+
+To compare models before switching, run the dry run. It never posts and never
+touches `workflow_state.json`:
+
+```powershell
+.venv\Scripts\python.exe scripts\model_dry_run.py --models claude-sonnet-5-5 claude-sonnet-4-5-20250929
+```
+
+It writes a side-by-side report to `logs/model_dry_run/<timestamp>/report.md`.
+
+**Model history:** Claude Sonnet 4.5 (`claude-sonnet-4-5-20250929`) was deprecated
+on 2026-09-30 and retires on 2026-11-30. This project moved to Claude Sonnet 5.5,
+Anthropic's recommended replacement, on 2026-10-01.
 
 ---
 
@@ -392,8 +409,9 @@ tweet-processor-mcp-agent/
 │       ├── __init__.py
 │       ├── url_validator.py               # LinkedIn URL validation
 │       ├── api_timeout_handler.py         # 90s timeouts + retry with backoff
-│       └── heartbeat_monitor.py           # Stall detection (3-min threshold)
-├── tests/                          # 143 tests, 100% pass rate
+│       ├── heartbeat_monitor.py           # Stall detection (3-min threshold)
+│       └── claude_llm.py                  # Claude wrapper: thinking/effort, refusal checks, token usage log
+├── tests/                          # 156 tests, 100% pass rate
 │   ├── conftest.py                 # Reusable test fixtures
 │   ├── test_article_parser.py      # 23 tests
 │   ├── test_tweet_composer.py      # 38 tests
@@ -402,13 +420,15 @@ tweet-processor-mcp-agent/
 │   ├── test_workflow_integration.py # 14 tests
 │   ├── test_workflow_state.py      # 8 tests
 │   ├── test_url_integrity.py       # 7 tests
-│   └── test_integration_workflow.py # 5 tests
+│   ├── test_integration_workflow.py # 5 tests
+│   └── test_claude_llm.py          # 13 tests
 ├── data/
 │   ├── articles.docx               # Source articles (authored in Word)
 │   └── articles.md                 # Generated from articles.docx (read by the app)
 ├── scripts/
 │   ├── convert_docx_to_md.py       # articles.docx → articles.md converter (--if-newer, --clear-cache, --dry-run)
 │   ├── clear_article_cache.py      # Empty articles_cache in workflow_state.json
+│   ├── model_dry_run.py            # Compare Claude models on all articles (no posting, no state changes)
 │   └── sync_publish.py             # Sync publish/ public copy from root HEAD (--dry-run, --push)
 ├── credentials/
 │   └── README.md                   # Credentials setup guide
@@ -449,7 +469,7 @@ cp mcp_agent.secrets.yaml.example mcp_agent.secrets.yaml
 ### **Testing**
 
 ```powershell
-# Run the full test suite (143 tests)
+# Run the full test suite (156 tests)
 python -m pytest tests/ -v
 
 # Run specific test categories
@@ -485,6 +505,7 @@ See [TESTING.md](TESTING.md) for complete test documentation.
 - `url_validator.py` - LinkedIn URL format validation and uniqueness checks
 - `api_timeout_handler.py` - 90-second async timeouts with retry and exponential backoff
 - `heartbeat_monitor.py` - Thread-based stall detection with 3-minute threshold
+- `claude_llm.py` - Claude wrapper: per-model thinking/effort settings, refusal and truncation checks, token usage logging
 
 ### **Adding New Features**
 
@@ -701,7 +722,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ### **Frameworks & Tools**
 
 - **[LastMile AI](https://lastmileai.dev/)** - MCP Agent Cloud framework ([GitHub](https://github.com/lastmile-ai/mcp-agent), [Docs](https://docs.mcp-agent.com/cloud/overview))
-- **[Anthropic](https://www.anthropic.com/)** - Claude Sonnet 4.5 LLM
+- **[Anthropic](https://www.anthropic.com/)** - Claude Sonnet 5.5 LLM
 - **[Model Context Protocol](https://modelcontextprotocol.io/)** - Standardized AI-service interface
 
 ### **Inspiration**
@@ -759,7 +780,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - [x] Reliability utilities (timeouts, retries, heartbeat)
 - [x] Windows Task Scheduler automation
 - [x] URL validation and integrity checks
-- [x] Automated testing suite (143 tests, 100% pass rate)
+- [x] Automated testing suite (156 tests, 100% pass rate)
 - [x] Enhanced LLM response parsing (universal code fence handling)
 - [x] Improved numbered list heuristics (arbitrary length support)
 - [x] Synchronized state logic (consistent URL deduplication)
@@ -769,6 +790,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - [x] Tweet content sanitizer (strips LLM meta-commentary such as character counts before posting)
 - [x] Tweet audit log (`logs/tweet_audit.log` records every composed and posted tweet verbatim)
 - [x] Per-run console capture in the scheduled runner (`logs/console-<timestamp>.log`)
+- [x] Migrated from Claude Sonnet 4.5 (deprecated) to Claude Sonnet 5.5
+- [x] Per-call token usage and cost log (`logs/token_usage.jsonl`)
 - [ ] Cloud deployment templates
 - [ ] Multi-account support
 - [ ] Analytics dashboard
@@ -790,6 +813,6 @@ If you find this project useful, please consider giving it a star! ⭐
 
 ---
 
-**Built with ❤️ using LastMile AI's MCP Agent Cloud and Claude Sonnet 4.5**
+**Built with ❤️ using LastMile AI's MCP Agent Cloud and Claude Sonnet 5.5**
 
 

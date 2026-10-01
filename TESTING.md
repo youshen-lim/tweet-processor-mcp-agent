@@ -2,11 +2,11 @@
 
 ## Overview
 
-The Tweet Processor has a comprehensive test suite with **143 tests** achieving **100% pass rate** with **0 warnings**.
+The Tweet Processor has a comprehensive test suite with **156 tests** achieving **100% pass rate** with **0 warnings**.
 
 | Metric | Value |
 |--------|-------|
-| **Total Tests** | 143 |
+| **Total Tests** | 156 |
 | **Pass Rate** | 100% |
 | **Warnings** | 0 |
 | **Runtime** | ~90 seconds |
@@ -37,6 +37,7 @@ python -m pytest tests/ -v --tb=line -q
 | `test_edge_cases.py` | 22 | Error handling, unicode, concurrent operations |
 | `test_integration_workflow.py` | 5 | End-to-end workflow execution |
 | `test_workflow_integration.py` | 14 | Full workflow URL integrity |
+| `test_claude_llm.py` | 13 | Claude wrapper: thinking/effort per model, refusal/truncation errors, cost estimate, usage log |
 
 ---
 
@@ -168,5 +169,5 @@ markers =
 
 ---
 
-*Last updated: August 2026 (counts verified against a full 143-test run)*
+*Last updated: October 2026 (counts verified against a full 156-test run)*
 
