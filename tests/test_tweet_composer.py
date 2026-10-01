@@ -5,6 +5,7 @@ Tests character limits, hashtag generation, insight selection, and content forma
 
 import pytest
 import os
+import re
 import sys
 from unittest.mock import Mock, AsyncMock, patch
 
@@ -511,6 +512,18 @@ class TestShortenRetry:
         retry_prompt = composer.llm.generate_str.await_args_list[1].kwargs["message"]
         assert self.LONG.strip() in retry_prompt
 
+    async def test_retry_prompt_aims_below_limit(self, sample_article_insights):
+        composer = MCPTweetComposerAgent()
+        composer.llm = AsyncMock()
+        composer.llm.generate_str = AsyncMock(side_effect=[self.LONG, self.SHORT])
+
+        await self._compose(composer, sample_article_insights)
+
+        retry_prompt = composer.llm.generate_str.await_args_list[1].kwargs["message"]
+        limit = int(re.search(r"The limit is (\d+) characters", retry_prompt).group(1))
+        assert f"aim for about {limit - MCPTweetComposerAgent.SHORTEN_TARGET_MARGIN})" in retry_prompt
+        assert MCPTweetComposerAgent.SHORTEN_TARGET_MARGIN == 30
+
     async def test_still_long_after_retry_is_truncated(self, sample_article_insights):
         composer = MCPTweetComposerAgent()
         composer.llm = AsyncMock()
@@ -529,3 +542,14 @@ class TestShortenRetry:
         main = await self._compose(composer, sample_article_insights)
 
         assert main.endswith('…')
+
+    async def test_retry_target_stays_positive_for_small_limits(self):
+        composer = MCPTweetComposerAgent()
+        composer.llm = AsyncMock()
+        composer.llm.generate_str = AsyncMock(return_value="Short")
+
+        await composer._shorten_tweet("x" * 40, max_chars=20)
+        assert "aim for about 10)" in composer.llm.generate_str.await_args.kwargs["message"]
+
+        await composer._shorten_tweet("x" * 40, max_chars=1)
+        assert "aim for about 1)" in composer.llm.generate_str.await_args.kwargs["message"]

@@ -84,6 +84,11 @@ Do NOT include a character count, word count, labels (such as "Tweet:"), quotati
     # A tweet is ~60 output tokens; 1024 leaves room without inviting rambling.
     REQUEST_PARAMS = claude_request_params(max_tokens=1024, effort="medium")
 
+    # The shorten retry asks for this many characters under the limit, because
+    # rewrites tend to land a few characters long (a 20-char margin left 4 of 13
+    # rewrites still over the limit in the 2026-10-01 live check).
+    SHORTEN_TARGET_MARGIN = 30
+
     PRIMARY_HASHTAGS = ["#AI", "#DataStrategy", "#BusinessValue"]
     SECONDARY_HASHTAGS = [
         "#MachineLearning", "#Leadership", "#TechStrategy",
@@ -304,12 +309,15 @@ Do NOT include a character count, word count, labels (such as "Tweet:"), quotati
         failed retry falls back to truncation instead of failing the run.
         """
         print(f"✂️  Tweet is {len(tweet_content)} chars (limit {max_chars}); asking for a shorter rewrite")
+        # Never aim below half the limit (or below 1), so a small limit cannot
+        # yield a tiny, zero, or negative target.
+        target = max(1, max_chars // 2, max_chars - self.SHORTEN_TARGET_MARGIN)
         prompt = f"""This tweet is {len(tweet_content)} characters. The limit is {max_chars} characters.
 
 Tweet:
 {tweet_content}
 
-Rewrite it in at most {max_chars} characters (aim for about {max_chars - 20}). Keep the same core insight, keep it a complete thought, and do not end with an ellipsis. Cut words rather than meaning.
+Rewrite it in at most {max_chars} characters (aim for about {target}). Keep the same core insight, keep it a complete thought, and do not end with an ellipsis. Cut words rather than meaning.
 
 Keep the same rules as before: no new facts, numbers, or names; active voice; no contractions; avoid hyphens; capitalize after semicolons; at most 1 emoji.
 

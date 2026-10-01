@@ -18,7 +18,7 @@ system as it runs today; everything under `archive/` is historical and carries a
 | [QUICK_START_GUIDE.md](../QUICK_START_GUIDE.md) | Get running in 30 minutes; weekly automation checklist; updating articles |
 | [TROUBLESHOOTING_GUIDE.md](../TROUBLESHOOTING_GUIDE.md) | Diagnosing stalls, Task Scheduler failures, article-sync issues |
 | [SECURITY_GUIDE.md](../SECURITY_GUIDE.md) | Sensitive-file inventory, `.gitignore` verification, publishing safety, incident response |
-| [TESTING.md](../TESTING.md) | Test suite guide (160 tests), markers, fixtures, coverage |
+| [TESTING.md](../TESTING.md) | Test suite guide (162 tests), markers, fixtures, coverage |
 
 ### In `docs/`
 
