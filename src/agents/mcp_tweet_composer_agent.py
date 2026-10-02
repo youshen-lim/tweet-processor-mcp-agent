@@ -85,9 +85,10 @@ Do NOT include a character count, word count, labels (such as "Tweet:"), quotati
     REQUEST_PARAMS = claude_request_params(max_tokens=1024, effort="medium")
 
     # The shorten retry asks for this many characters under the limit, because
-    # rewrites tend to land a few characters long (a 20-char margin left 4 of 13
-    # rewrites still over the limit in the 2026-10-01 live check).
-    SHORTEN_TARGET_MARGIN = 30
+    # rewrites tend to land a few characters long. In the 2026-10-01 live checks,
+    # a 20-char margin left 4 of 13 rewrites over the limit and a 30-char margin
+    # left 1 of 19.
+    SHORTEN_TARGET_MARGIN = 40
 
     PRIMARY_HASHTAGS = ["#AI", "#DataStrategy", "#BusinessValue"]
     SECONDARY_HASHTAGS = [

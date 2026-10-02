@@ -522,7 +522,7 @@ class TestShortenRetry:
         retry_prompt = composer.llm.generate_str.await_args_list[1].kwargs["message"]
         limit = int(re.search(r"The limit is (\d+) characters", retry_prompt).group(1))
         assert f"aim for about {limit - MCPTweetComposerAgent.SHORTEN_TARGET_MARGIN})" in retry_prompt
-        assert MCPTweetComposerAgent.SHORTEN_TARGET_MARGIN == 30
+        assert MCPTweetComposerAgent.SHORTEN_TARGET_MARGIN == 40
 
     async def test_still_long_after_retry_is_truncated(self, sample_article_insights):
         composer = MCPTweetComposerAgent()
