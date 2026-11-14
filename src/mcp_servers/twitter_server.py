@@ -5,9 +5,50 @@ Provides tools for posting tweets to Twitter/X.
 
 import os
 import re
+import ssl
+import time
+import traceback
 from typing import Dict, Any, Optional
+import requests
 import tweepy
+from urllib3.exceptions import ConnectTimeoutError, NewConnectionError
 from datetime import datetime
+
+# Retries for create_tweet when the connection fails before the request is sent.
+POST_CONNECT_ATTEMPTS = 3
+POST_CONNECT_BACKOFF_SECONDS = 5
+
+
+def _failed_before_send(exc: BaseException) -> bool:
+    """
+    True only when the error provably happened before the HTTP request reached X:
+    TCP connect failure/timeout, DNS failure, or a TLS handshake failure.
+
+    Errors after the request was sent (connection reset while reading the response,
+    read timeouts, HTTP errors) return False. Those are never retried, because the
+    tweet may already have been posted and a retry could post it twice.
+    """
+    if isinstance(exc, requests.exceptions.ConnectTimeout):
+        return True
+    seen = set()
+    stack = [exc]
+    while stack:
+        err = stack.pop()
+        if err is None or id(err) in seen:
+            continue
+        seen.add(id(err))
+        # NameResolutionError subclasses NewConnectionError in urllib3 2.x.
+        if isinstance(err, (NewConnectionError, ConnectTimeoutError)):
+            return True
+        # ssl.SSLError (e.g. SSLEOFError) or a ConnectionResetError raised inside
+        # the TLS handshake: no HTTP bytes have been sent yet.
+        if isinstance(err, (ssl.SSLError, OSError)) and err.__traceback__ is not None:
+            frames = traceback.extract_tb(err.__traceback__)
+            if any(frame.name == 'do_handshake' for frame in frames):
+                return True
+        stack.extend([err.__cause__, err.__context__, getattr(err, 'reason', None)])
+        stack.extend(a for a in getattr(err, 'args', ()) if isinstance(a, BaseException))
+    return False
 
 # MCP Server setup (using LastMile AI's MCP framework)
 # NOTE: MCP Server functionality is currently disabled
@@ -103,8 +144,24 @@ class TwitterClient:
                 f"Original length: {len(text)} chars"
             )
 
-        # Post tweet
-        response = self.client.create_tweet(text=text)
+        # Post tweet. Retry only connection failures that happened before the
+        # request was sent (e.g. the 2026-11-14 TLS handshake EOF); anything
+        # later is re-raised so a tweet is never posted twice.
+        for attempt in range(1, POST_CONNECT_ATTEMPTS + 1):
+            try:
+                response = self.client.create_tweet(text=text)
+                break
+            except requests.exceptions.RequestException as e:
+                if attempt < POST_CONNECT_ATTEMPTS and _failed_before_send(e):
+                    delay = POST_CONNECT_BACKOFF_SECONDS * attempt
+                    print(
+                        f"⚠️  Connection to X failed before the tweet was sent "
+                        f"({type(e).__name__}); retrying in {delay}s "
+                        f"(attempt {attempt + 1}/{POST_CONNECT_ATTEMPTS})"
+                    )
+                    time.sleep(delay)
+                    continue
+                raise
 
         return {
             'tweet_id': response.data['id'],

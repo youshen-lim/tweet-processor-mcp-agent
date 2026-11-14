@@ -121,6 +121,7 @@ async def run_preview():
     else:
         print(f"❌ ERROR: {result.get('error', 'Unknown error')}")
         print()
+        sys.exit(1)
 
 
 async def run_generate():
@@ -159,10 +160,11 @@ async def run_generate():
         print("   2. Manually post to Twitter if satisfied")
         print("   3. Run again next Monday for the next tweet")
         print()
-        
+
     else:
         print(f"❌ ERROR: {result.get('error', 'Unknown error')}")
         print()
+        sys.exit(1)
 
 
 async def run_post():
@@ -204,14 +206,18 @@ async def run_post():
                 print(f"🔗 Tweet URL: {post_result.get('url', 'N/A')}")
         else:
             print("⚠️  Tweet generated but posting failed or was skipped")
+            sys.exit(1)
 
         print()
         print("📊 UPDATED STATE:")
         print_state(workflow.state)
-        
+
     else:
         print(f"❌ ERROR: {result.get('error', 'Unknown error')}")
         print()
+        # Non-zero exit so the batch wrapper, posting_log.txt and Task
+        # Scheduler record the failure instead of "exit code 0".
+        sys.exit(1)
 
 
 async def run_pipeline():
