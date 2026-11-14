@@ -242,7 +242,10 @@ class MCPTweetProcessorWorkflow:
         composed and what was actually posted.
         """
         try:
-            os.makedirs('logs', exist_ok=True)
+            # TWEET_AUDIT_LOG overrides the path (tests point it at a temp dir),
+            # mirroring TOKEN_USAGE_LOG in utils/claude_llm.py.
+            audit_path = os.getenv('TWEET_AUDIT_LOG', os.path.join('logs', 'tweet_audit.log'))
+            os.makedirs(os.path.dirname(audit_path) or '.', exist_ok=True)
             header = (
                 f"[{datetime.now().isoformat()}] {event.upper()} "
                 f"article=#{tweet['article_number']} "
@@ -251,7 +254,7 @@ class MCPTweetProcessorWorkflow:
             )
             if tweet_id:
                 header += f" tweet_id={tweet_id}"
-            with open(os.path.join('logs', 'tweet_audit.log'), 'a', encoding='utf-8') as f:
+            with open(audit_path, 'a', encoding='utf-8') as f:
                 f.write(header + "\n")
                 f.write(tweet['content'] + "\n")
                 f.write("-" * 60 + "\n")

@@ -7,12 +7,65 @@ import json
 import os
 import sys
 import tempfile
+import time
 from pathlib import Path
 from unittest.mock import Mock, AsyncMock, patch
 from typing import Dict, List, Any
 
 # Add src to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+PRODUCTION_LOGS_DIR = PROJECT_ROOT / "logs"
+PRODUCTION_STATE_FILE = PROJECT_ROOT / "workflow_state.json"
+
+
+class LiveAPICallBlocked(RuntimeError):
+    """Raised when a test reaches the real Anthropic API."""
+
+
+@pytest.fixture(autouse=True)
+def _isolate_from_live_services(monkeypatch, tmp_path):
+    """
+    Safety net for every test: no live Anthropic calls, no writes to production logs.
+
+    On 2026-11-14 a full test run made 34 real Sonnet calls and appended junk
+    entries to logs/tweet_audit.log and logs/token_usage.jsonl, because
+    run_weekly_post() calls initialize_agents(), which replaces a test's mock
+    composer with a real one. Tests that need LLM output must mock the agent
+    or its llm.generate_str; anything that slips through fails loudly here.
+    """
+    monkeypatch.setenv("TOKEN_USAGE_LOG", str(tmp_path / "token_usage.jsonl"))
+    monkeypatch.setenv("TWEET_AUDIT_LOG", str(tmp_path / "tweet_audit.log"))
+
+    message = "Live Anthropic API call blocked in tests; mock the agent or its LLM instead"
+
+    async def _blocked_async(*args, **kwargs):
+        raise LiveAPICallBlocked(message)
+
+    def _blocked_sync(*args, **kwargs):
+        raise LiveAPICallBlocked(message)
+
+    from anthropic.resources.messages import AsyncMessages, Messages
+    from mcp_agent.workflows.llm.augmented_llm_anthropic import AnthropicAugmentedLLM
+
+    monkeypatch.setattr(AnthropicAugmentedLLM, "generate", _blocked_async)
+    monkeypatch.setattr(AsyncMessages, "create", _blocked_async)
+    monkeypatch.setattr(Messages, "create", _blocked_sync)
+
+    # Catch-all for writes that cannot be redirected (e.g. mcp_agent's file
+    # logger, logs/tweet-processor-*.jsonl, which starts with the real MCP app):
+    # fail the test if it touched the production logs or workflow state.
+    # (A scheduled production run overlapping the test session would trip this too.)
+    started = time.time()
+    yield
+    touched = [
+        str(p.relative_to(PROJECT_ROOT))
+        for p in [*PRODUCTION_LOGS_DIR.glob("*"), PRODUCTION_STATE_FILE]
+        if p.is_file() and p.stat().st_mtime >= started
+    ]
+    if touched:
+        pytest.fail(f"Test wrote to production files: {touched}. Mock the workflow's mcp_app/agents.")
 
 
 @pytest.fixture

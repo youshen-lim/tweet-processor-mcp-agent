@@ -23,11 +23,21 @@ class TestWorkflowIntegration:
     def mock_workflow(self):
         """Create a mock workflow instance for testing."""
         workflow = MCPTweetProcessorWorkflow()
-        
+
         # Mock the MCP components
         workflow.content_analyzer = Mock()
         workflow.tweet_composer = Mock()
-        
+
+        # run_weekly_post() calls initialize_agents(), which would replace the
+        # mocks above with real agents (live Sonnet calls), and mcp_app.run()
+        # would start the real MCP app, whose file logger writes
+        # logs/tweet-processor-*.jsonl. Stub both so the test stays offline.
+        workflow.initialize_agents = AsyncMock()
+        mock_mcp_context = AsyncMock()
+        mock_mcp_context.__aenter__ = AsyncMock(return_value=Mock(logger=Mock()))
+        mock_mcp_context.__aexit__ = AsyncMock(return_value=None)
+        workflow.mcp_app.run = Mock(return_value=mock_mcp_context)
+
         return workflow
     
     @pytest.fixture
