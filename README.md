@@ -61,17 +61,17 @@ Based on [Anthropic's research](https://www.anthropic.com/research/building-effe
 
 - ✅ **Simple, composable patterns** (not complex frameworks)
 - ✅ **Clear separation of concerns** (workflows vs agents)
-- ✅ **Augmented LLMs with tools** (MCP servers for external services)
+- ✅ **Augmented LLMs with tools** (MCP servers can expose external services; this project does not run any yet)
 - ✅ **Prompt chaining** (content analysis → tweet composition)
-- ✅ **Human oversight checkpoints** (manual review before posting)
+- ✅ **Human oversight checkpoints** (optional preview and manual review modes before posting)
 
-MCP Agent Cloud implements these patterns natively.
+MCP Agent Cloud implements these patterns natively. This project uses it for the app container, the agents, and the Claude wrapper; posting to X is a direct API call, not an MCP server.
 
 ### **2. Model Context Protocol (MCP) Standardization**
 
 **MCP Benefits:**
 - **Interoperability**: Any tool exposed by MCP servers works seamlessly
-- **Composability**: Chain together local files (read) → Claude (analyze) → Twitter (post)
+- **Composability**: Chain together local files (read) → Claude (analyze) → Twitter (post), with any step movable behind an MCP server later
 - **Maintainability**: MCP servers handle API complexity, your code stays clean
 - **Future-proof**: As more services adopt MCP, you can integrate them easily
 
@@ -97,18 +97,18 @@ MCP Agent Cloud implements proven workflow patterns:
 
 | Pattern | Implementation | Benefit |
 |---------|---------------|---------|
-| **Augmented LLM** | Claude Sonnet 5.5 with MCP tools | Tool-using AI with external capabilities |
+| **Augmented LLM** | Claude Sonnet 5.5 via `ClaudeLLM` (extends mcp-agent's `AnthropicAugmentedLLM`) | One place for model settings, refusal checks, and usage logging |
 | **Prompt Chaining** | Analysis → Composition → Posting | Break complex task into manageable steps |
 | **Agent-Computer Interface** | Well-documented MCP tools | Clear, reliable tool usage |
 | **State Management** | `workflow_state.json` | Track progress, cache analyses |
-| **Human-in-the-Loop** | Manual review mode | Safety and quality control |
+| **Human-in-the-Loop** | Optional preview, pipeline, and manual review modes | Review before posting when you want it |
 
 ### **5. Cost Optimization**
 
-Smart caching reduces API costs by **75%**:
-- Article analyses are cached in `workflow_state.json`
-- Reused across 4 tweet variations
-- Only re-analyze when article content changes
+Each article is analyzed once, not once per tweet:
+- The analysis is cached in `workflow_state.json` as `analysis_<article number>`
+- All 4 tweet variations reuse it, so an article costs 1 analysis call instead of 4
+- The cache is keyed by article number, not content. After you edit an article's text, remove its `analysis_<n>` entry to get a fresh analysis (`--clear-cache` only empties `articles_cache`)
 
 ---
 
@@ -123,13 +123,12 @@ Smart caching reduces API costs by **75%**:
 ### 📅 **Flexible Scheduling & Preview**
 - **Pipeline Preview**: Generate and review 3 weeks of scheduled tweets before posting
 - **Customizable Schedule**: Configure posting day, time, and timezone
-- **Manual Review Mode**: Preview and approve tweets before they go live
-- **State Management**: Tracks posting history and automatically advances to next variation
+- **Manual Review Mode**: Generate the next tweet to a file and post it yourself
+- **State Management**: Tracks posting history and advances to the next variation after each successful post
 
 ### 🔗 **Seamless Integrations**
 - **Local Files**: Reads newsletter content from local Markdown files (`data/articles.md`)
-- **Twitter/X API**: Posts tweets automatically with OAuth 1.0a authentication via MCP server
-- **Multi-LLM Support**: Works with both Anthropic Claude and OpenAI models
+- **Twitter/X API**: Posts tweets with OAuth 1.0a through a Tweepy client (`TwitterClient` in `src/mcp_servers/twitter_server.py`); the MCP server wrapper in that file is currently disabled
 - **MCP Extensibility**: Easy to add new integrations (Slack, GitHub, databases, etc.)
 
 ### 🛡️ **Safe & Reliable**
@@ -137,6 +136,8 @@ Smart caching reduces API costs by **75%**:
 - **Simulated Posting**: Validate workflow before enabling live posting
 - **Character Limit Enforcement**: Ensures tweets stay within Twitter's 280-character limit
 - **Error Handling**: Graceful failure recovery with detailed logging
+- **Safe Posting Retries**: If the connection to X fails before the request is sent, posting is retried up to 3 times; failures after sending are never retried, so a tweet cannot be posted twice
+- **Timeout Retry**: A tweet-writing request that times out (90 seconds) is retried once after a 5-second pause
 - **Secrets Management**: Secure handling of API keys and credentials
 
 ---
@@ -150,8 +151,8 @@ Windows Desktop Application
 ├── Manual Execution (run_tweet_processor.py)
 ├── MCP Agent Cloud Framework
 │   ├── MCPApp (application container)
-│   ├── ClaudeLLM (Claude Sonnet 5.5, extends AnthropicAugmentedLLM)
-│   └── MCP Servers (Twitter)
+│   └── ClaudeLLM (Claude Sonnet 5.5, extends AnthropicAugmentedLLM)
+├── TwitterClient (Tweepy, direct X API v2 calls)
 ├── Agents
 │   ├── MCPContentAnalyzerAgent (extract insights)
 │   └── MCPTweetComposerAgent (generate tweets)
@@ -171,13 +172,15 @@ Step 3: Analyze Content (Claude Sonnet 5.5)
    ↓  Cache analysis in workflow_state.json
    ↓
 Step 4: Compose Tweet (Claude Sonnet 5.5)
-   ↓  Generate 4 variations (1 per insight)
+   ↓  Compose variations 1..N for this week's variation N
+   ↓  (each avoids the insights used by the ones before it)
+   ↓  Retry once if a request times out
    ↓  Enforce professional writing style
    ↓  Ensure 280-character limit
    ↓
-Step 5: Post Tweet (Twitter MCP)
+Step 5: Post Tweet (X API via Tweepy)
    ↓  Manual review or auto-post
-   ↓  Update state for next variation
+   ↓  Update state for next variation (only after a successful post)
    ↓
 Step 6: State Management
    ↓  Track current article/variation
@@ -190,7 +193,7 @@ Step 6: State Management
 - **Title Exclusion**: Tweets focus on content insights, not article titles
 - **Strategic Focus**: Emphasizes "why it matters" over "what it is"
 - **Character Optimization**: Aggressive enforcement of 280-character limit; over-length tweets get one "shorten" rewrite before truncation is used as a last resort
-- **Caching**: Stores article analysis to avoid redundant API calls (75% cost reduction)
+- **Caching**: Stores each article's analysis so its 4 variations share one analysis call
 
 ---
 
@@ -240,17 +243,15 @@ cd tweet-processor-mcp-agent
 pip install -r requirements.txt
 ```
 
-**Dependencies:**
-- `mcp>=1.13.1` - Model Context Protocol SDK
-- `mcp-agent>=0.1.34` - MCP Agent Cloud framework
-- `fastmcp>=2.12.4` - FastMCP framework for MCP servers
-- `anthropic>=0.48.0` - Claude API client
-- `tweepy>=4.14.0` - Twitter API client
-- `python-dotenv` - Environment variable management
-- `python-docx>=1.1.0` - Word document parsing (`articles.docx` → `articles.md` converter)
-- `pytest>=8.0.0` - Testing framework
-- `pytest-asyncio` - Async test support
-- `pytest-mock` - Mock utilities
+**Dependencies** (versions are pinned with upper bounds in `requirements.txt`):
+- `mcp>=1.27.2,<1.28` - Model Context Protocol SDK (capped at the minor version; a minor bump broke a run in August 2026)
+- `mcp-agent[anthropic,openai]>=0.2.6,<0.3` - MCP Agent Cloud framework
+- `anthropic>=0.109.1,<1` - Claude API client
+- `openai>=2.41.1,<3` - installed for mcp-agent's OpenAI provider (not used by this project)
+- `tweepy>=4.16.0,<5` - Twitter API client
+- `python-dotenv>=1.2.2,<2` - Environment variable management
+- `python-docx>=1.2.0,<2` - Word document parsing (`articles.docx` → `articles.md` converter)
+- `pytest>=9.1.0,<10`, `pytest-asyncio>=1.4.0,<2`, `pytest-mock>=3.15.1,<4` - Testing
 
 ### **3. Set Up Secrets**
 
@@ -337,16 +338,16 @@ Anthropic's recommended replacement, on 2026-10-01.
 ### **Command-Line Interface**
 
 ```powershell
-# Preview next tweet (safe - doesn't update state or post)
+# Preview next tweet (never posts or advances the rotation)
 python run_tweet_processor.py --preview
 
 # Generate 3-week pipeline of scheduled tweets
 python run_tweet_processor.py --pipeline
 
-# Generate next tweet and update state (manual review)
+# Generate next tweet and save it to tweet_<timestamp>.json for manual posting
 python run_tweet_processor.py
 
-# Post tweet to Twitter (requires ENABLE_TWITTER_POSTING=true)
+# Post tweet to Twitter (requires ENABLE_TWITTER_POSTING=true; otherwise it runs manual review mode)
 python run_tweet_processor.py --post
 
 # Show current workflow state
@@ -356,21 +357,21 @@ python run_tweet_processor.py --status
 ### **Workflow Modes**
 
 **Preview Mode** (Recommended for Testing)
-- Generates next tweet without updating state or posting
-- Safe for testing and development
+- Generates the next tweet without posting or advancing the rotation
+- Still calls Claude, and caches the parsed articles and the article's analysis in `workflow_state.json` the first time; later posts reuse that analysis
 
 **Pipeline Mode** (Recommended for Planning)
 - Generates next 3 weeks of scheduled tweets
 - Saves to `tweet_pipeline.json` and `tweet_pipeline.md`
-- Allows review and editing before posting
+- For review only: each weekly run writes its tweet fresh, so edits to these files are not posted and the posted wording will differ
 
 **Manual Review Mode** (Default)
-- Generates next tweet and updates state
-- Does NOT post to Twitter (manual posting required)
+- Generates the next tweet and saves it to `tweet_<timestamp>.json`
+- Does NOT post to Twitter and does NOT advance the rotation; running it again drafts the same variation
 
 **Auto-Post Mode**
-- Generates and posts tweet automatically
-- Requires `ENABLE_TWITTER_POSTING=true` in `.env`
+- Generates and posts the tweet, then advances to the next variation once X confirms the post
+- Requires `ENABLE_TWITTER_POSTING=true` in `.env`; this is what the scheduled `run_tweet_processor.bat` runs
 
 ---
 
@@ -380,14 +381,14 @@ python run_tweet_processor.py --status
 tweet-processor-mcp-agent/
 ├── run_tweet_processor.py          # Main entry point (--post, --preview, --pipeline, --status)
 ├── run_tweet_processor.bat         # Windows Task Scheduler automation
-├── run_tweet_processor_timeout.bat # Timeout-protected runner (10 min)
+├── run_tweet_processor_timeout.bat # 10-minute timeout runner (currently not working; use run_tweet_processor.bat)
 ├── requirements.txt                # Python dependencies
 ├── pytest.ini                      # Test configuration
 ├── .env.example                    # Environment variables template
 ├── mcp_agent.config.yaml           # MCP Agent configuration
 ├── mcp_agent.secrets.yaml.example  # Secrets template
 ├── workflow_state.json.example     # Example state file
-├── Dockerfile                      # Container deployment
+├── Dockerfile                      # Container sketch (out of date; see Deployment)
 ├── LICENSE                         # MIT License
 ├── README.md                       # This file
 ├── QUICK_START_GUIDE.md            # Quick start guide
@@ -407,29 +408,32 @@ tweet-processor-mcp-agent/
 │   │   └── twitter_server.py              # Twitter API v2 client
 │   └── utils/
 │       ├── __init__.py
-│       ├── url_validator.py               # LinkedIn URL validation
-│       ├── api_timeout_handler.py         # 90s timeouts + retry with backoff
-│       ├── heartbeat_monitor.py           # Stall detection (3-min threshold)
+│       ├── url_validator.py               # LinkedIn URL validation helpers (tests; the workflow validates inline)
+│       ├── api_timeout_handler.py         # Timeout + retry-with-backoff helpers (standalone, not wired in)
+│       ├── heartbeat_monitor.py           # Stall detection helper, 3-min threshold (standalone, not wired in)
 │       └── claude_llm.py                  # Claude wrapper: thinking/effort, refusal checks, token usage log
-├── tests/                          # 162 tests, 100% pass rate
+├── tests/                          # 185 tests, all passing
 │   ├── conftest.py                 # Reusable test fixtures
 │   ├── test_article_parser.py      # 23 tests
-│   ├── test_tweet_composer.py      # 44 tests
+│   ├── test_tweet_composer.py      # 48 tests
 │   ├── test_url_validator.py       # 26 tests
 │   ├── test_edge_cases.py          # 22 tests
-│   ├── test_workflow_integration.py # 14 tests
+│   ├── test_workflow_integration.py # 17 tests
 │   ├── test_workflow_state.py      # 8 tests
 │   ├── test_url_integrity.py       # 7 tests
 │   ├── test_integration_workflow.py # 5 tests
-│   └── test_claude_llm.py          # 13 tests
+│   ├── test_claude_llm.py          # 13 tests
+│   ├── test_twitter_post_retry.py  # 9 tests
+│   └── test_tee_run.py             # 7 tests
 ├── data/
-│   ├── articles.docx               # Source articles (authored in Word)
+│   ├── articles.docx               # Source articles (authored in Word; gitignored, bring your own)
 │   └── articles.md                 # Generated from articles.docx (read by the app)
 ├── scripts/
 │   ├── convert_docx_to_md.py       # articles.docx → articles.md converter (--if-newer, --clear-cache, --dry-run)
 │   ├── clear_article_cache.py      # Empty articles_cache in workflow_state.json
 │   ├── model_dry_run.py            # Compare Claude models on all articles (no posting, no state changes)
-│   └── sync_publish.py             # Sync publish/ public copy from root HEAD (--dry-run, --push)
+│   ├── sync_publish.py             # Sync publish/ public copy from root HEAD (--dry-run, --push)
+│   └── tee_run.py                  # Streams a run's output live to the window and the per-run log
 ├── credentials/
 │   └── README.md                   # Credentials setup guide
 ├── docs/
@@ -454,9 +458,9 @@ git clone https://github.com/youshen-lim/tweet-processor-mcp-agent.git
 cd tweet-processor-mcp-agent
 
 # Create virtual environment
-python -m venv venv
-.\venv\Scripts\activate  # Windows
-# source venv/bin/activate  # macOS/Linux
+python -m venv .venv
+.\.venv\Scripts\activate  # Windows (run_tweet_processor.bat uses .venv)
+# source .venv/bin/activate  # macOS/Linux
 
 # Install dependencies
 pip install -r requirements.txt
@@ -469,7 +473,7 @@ cp mcp_agent.secrets.yaml.example mcp_agent.secrets.yaml
 ### **Testing**
 
 ```powershell
-# Run the full test suite (162 tests)
+# Run the full test suite (185 tests)
 python -m pytest tests/ -v
 
 # Run specific test categories
@@ -502,9 +506,9 @@ See [TESTING.md](TESTING.md) for complete test documentation.
 - `twitter_server.py` - Twitter API v2 client with URL length calculation
 
 **Utilities** (`src/utils/`):
-- `url_validator.py` - LinkedIn URL format validation and uniqueness checks
-- `api_timeout_handler.py` - 90-second async timeouts with retry and exponential backoff
-- `heartbeat_monitor.py` - Thread-based stall detection with 3-minute threshold
+- `url_validator.py` - LinkedIn URL format validation and uniqueness checks (exercised by tests; the workflow has its own inline checks)
+- `api_timeout_handler.py` - Generic async timeout and retry-with-backoff helpers (not yet used; the agents apply a 90-second timeout directly)
+- `heartbeat_monitor.py` - Thread-based stall detection with 3-minute threshold (not yet used)
 - `claude_llm.py` - Claude wrapper: per-model thinking/effort settings, refusal and truncation checks, token usage logging
 
 ### **Adding New Features**
@@ -547,10 +551,8 @@ See [TESTING.md](TESTING.md) for complete test documentation.
 - See [MCP Agent Cloud Docs](https://docs.mcp-agent.com/cloud/overview) for instructions
 
 **Other Options:**
-- **Docker**: Use included `Dockerfile` for containerization
-- **AWS Lambda**: Deploy as serverless function
-- **Google Cloud Run**: Deploy as containerized service
-- **Heroku**: Deploy as web worker
+- **Docker**: The included `Dockerfile` is out of date (its `CMD` points at a removed script and it does not copy the entry point or config); update it before use
+- **AWS Lambda / Google Cloud Run / Heroku**: Possible targets; not set up or tested
 
 ---
 
@@ -647,9 +649,8 @@ The two layers cover different failure modes (a broken/edited runner vs. the con
 - Report as a bug if it persists
 
 #### **"Workflow state corrupted"**
-- Delete `workflow_state.json` to reset
+- Delete `workflow_state.json` to reset. This restarts the rotation at Article #1 and loses posting history, so back it up first
 - Re-run with `--preview` to regenerate state
-- Backup important state files before deleting
 
 ### **Debug Mode**
 
@@ -741,7 +742,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ### **Documentation**
 
-- [docs/README.md](docs/README.md) - **Documentation index** (all docs, active and archived)
+- [docs/README.md](docs/README.md) - **Documentation index** (active docs; archived docs stay in the private workspace)
 - [QUICK_START_GUIDE.md](QUICK_START_GUIDE.md) - Quick start and secrets setup guide
 - [SECURITY_GUIDE.md](SECURITY_GUIDE.md) - Security best practices
 - [TESTING.md](TESTING.md) - Test suite documentation
@@ -764,9 +765,9 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 📊 Project Status
 
-**Current Version:** 2.3.1
+**Current Version:** 2.4.0
 **Status:** Production-ready, running weekly automated execution
-**Last Updated:** August 24, 2026
+**Last Updated:** November 20, 2026
 
 ### **Roadmap**
 
@@ -777,10 +778,10 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - [x] Pipeline preview feature
 - [x] Local Markdown article parser (replaced Google Drive)
 - [x] Article pre-analyzer with caching (retired July 2026 — the main workflow analyzes and caches inline)
-- [x] Reliability utilities (timeouts, retries, heartbeat)
+- [x] 90-second timeouts on Claude calls (standalone retry and heartbeat helpers in `src/utils/`, not yet wired in)
 - [x] Windows Task Scheduler automation
 - [x] URL validation and integrity checks
-- [x] Automated testing suite (162 tests, 100% pass rate)
+- [x] Automated offline test suite (185 tests; no API calls, no writes to production logs)
 - [x] Enhanced LLM response parsing (universal code fence handling)
 - [x] Improved numbered list heuristics (arbitrary length support)
 - [x] Synchronized state logic (consistent URL deduplication)
@@ -793,6 +794,13 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - [x] Migrated from Claude Sonnet 4.5 (deprecated) to Claude Sonnet 5.5
 - [x] Per-call token usage and cost log (`logs/token_usage.jsonl`)
 - [x] Shorten-rewrite retry for over-length tweets (truncation only as a fallback)
+- [x] Non-zero exit code on failed runs, so Task Scheduler and `posting_log.txt` record failures
+- [x] Retry posting when the connection to X fails before the request is sent (never after, to avoid duplicate tweets)
+- [x] Compose only the variations a run needs (1..N) instead of always 4
+- [x] One retry after a tweet-writing timeout
+- [x] Live console output in the scheduled runner (`scripts/tee_run.py`), still saved to `logs/console-<timestamp>.log`
+- [ ] Re-analyze an article automatically when its text changes
+- [ ] Working container image (Dockerfile)
 - [ ] Cloud deployment templates
 - [ ] Multi-account support
 - [ ] Analytics dashboard

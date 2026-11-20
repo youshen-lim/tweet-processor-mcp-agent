@@ -68,7 +68,7 @@ python run_tweet_processor.py --preview
 ```
 
 This will:
-- ✅ Generate a tweet from your Google Drive document
+- ✅ Generate a tweet from `data/articles.md`
 - ✅ Show you the tweet content
 - ✅ NOT post to Twitter (safe!)
 

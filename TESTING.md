@@ -2,14 +2,14 @@
 
 ## Overview
 
-The Tweet Processor has a comprehensive test suite with **162 tests** achieving **100% pass rate** with **0 warnings**.
+The Tweet Processor has a comprehensive offline test suite with **185 tests** achieving **100% pass rate** with **0 warnings**.
 
 | Metric | Value |
 |--------|-------|
-| **Total Tests** | 162 |
+| **Total Tests** | 185 |
 | **Pass Rate** | 100% |
 | **Warnings** | 0 |
-| **Runtime** | ~90 seconds |
+| **Runtime** | ~35 seconds |
 
 ---
 
@@ -32,12 +32,14 @@ python -m pytest tests/ -v --tb=line -q
 | `test_article_parser.py` | 23 | Article parsing, markdown extraction, edge cases |
 | `test_url_validator.py` | 26 | URL format validation, uniqueness, article validation |
 | `test_url_integrity.py` | 7 | URL mappings, consistency across workflow |
-| `test_tweet_composer.py` | 44 | Tweet composition, hashtags, character limits, shorten retry |
+| `test_tweet_composer.py` | 48 | Tweet composition, hashtags, character limits, shorten retry, timeout retry |
 | `test_workflow_state.py` | 8 | State loading/saving, article progression |
 | `test_edge_cases.py` | 22 | Error handling, unicode, concurrent operations |
 | `test_integration_workflow.py` | 5 | End-to-end workflow execution |
-| `test_workflow_integration.py` | 14 | Full workflow URL integrity |
+| `test_workflow_integration.py` | 17 | Full workflow URL integrity; composes only up to the current variation |
 | `test_claude_llm.py` | 13 | Claude wrapper: thinking/effort per model, refusal/truncation errors, cost estimate, usage log |
+| `test_twitter_post_retry.py` | 9 | Posting retries only for connection failures before the request is sent |
+| `test_tee_run.py` | 7 | Live output streaming, exit codes, log integrity |
 
 ---
 
@@ -71,7 +73,7 @@ python -m pytest tests/ -v -m "slow"
 python -m pytest tests/test_article_parser.py -v
 
 # Run a specific test function
-python -m pytest tests/test_article_parser.py::test_article_dataclass_properties -v
+python -m pytest tests/test_article_parser.py::TestArticle::test_article_creation -v
 
 # Run tests matching a pattern
 python -m pytest tests/ -v -k "url"
@@ -169,5 +171,5 @@ markers =
 
 ---
 
-*Last updated: October 2026 (counts verified against a full 162-test run)*
+*Last updated: November 20, 2026 (counts verified against a full 185-test run)*
 

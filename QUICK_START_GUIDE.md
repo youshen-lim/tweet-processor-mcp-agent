@@ -152,13 +152,13 @@ python scripts/convert_docx_to_md.py --clear-cache
 
 ### **Current Setup (Desktop):**
 - **Hosting:** $0 (runs on your laptop)
-- **Claude Sonnet 5.5:** ~$0.040 per posted tweet (each article costs ~$0.16 over its 4 weekly runs: one analysis, 4 tweet-writing calls per run, and a shorten retry on roughly 1 in 5 tweets)
+- **Claude Sonnet 5.5:** ~$0.03 per posted tweet (each article costs ~$0.11 over its 4 weekly runs: one analysis, then 1, 2, 3 and 4 tweet-writing calls, 10 in all, and a shorten retry on roughly 1 in 5 tweets)
 - **Twitter API:** Free
-- **Total per quarter:** ~$0.52 (13 tweets)
+- **Total per quarter:** ~$0.35 (13 tweets)
 
-### **Annual Cost:** ~$2.07/year
+### **Annual Cost:** ~$1.40/year
 
-Figures are measured from a dry run of all 24 articles on 2026-10-01 at Claude API list prices ($2 / $10 per million input / output tokens). Actual per-call usage and cost are logged to `logs/token_usage.jsonl`.
+Figures are estimates scaled from a dry run of all 24 articles on 2026-10-01 at Claude API list prices ($2 / $10 per million input / output tokens), adjusted for composing only the variations each run needs (since 2026-11-18). Actual per-call usage and cost are logged to `logs/token_usage.jsonl`.
 
 ---
 
