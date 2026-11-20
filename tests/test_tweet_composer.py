@@ -3,6 +3,7 @@ Unit Tests for Tweet Composer Agent
 Tests character limits, hashtag generation, insight selection, and content formatting.
 """
 
+import asyncio
 import pytest
 import os
 import re
@@ -553,3 +554,54 @@ class TestShortenRetry:
 
         await composer._shorten_tweet("x" * 40, max_chars=1)
         assert "aim for about 1)" in composer.llm.generate_str.await_args.kwargs["message"]
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+class TestTimeoutRetry:
+    """A timed-out composition request is retried once; a second timeout fails the run."""
+
+    SHORT = TestShortenRetry.SHORT
+
+    def _composer(self, side_effect, monkeypatch):
+        composer = MCPTweetComposerAgent()
+        composer.llm = AsyncMock()
+        composer.llm.generate_str = AsyncMock(side_effect=side_effect)
+        monkeypatch.setattr(composer, "TIMEOUT_RETRY_DELAY_SECONDS", 0)
+        return composer
+
+    async def test_timeout_then_success_is_retried(self, sample_article_insights, monkeypatch):
+        composer = self._composer([asyncio.TimeoutError(), self.SHORT], monkeypatch)
+
+        main = await TestShortenRetry()._compose(composer, sample_article_insights)
+
+        assert main == self.SHORT
+        assert composer.llm.generate_str.await_count == 2
+        prompts = [c.kwargs["message"] for c in composer.llm.generate_str.await_args_list]
+        assert prompts[0] == prompts[1]
+
+    async def test_two_timeouts_fail_the_run(self, sample_article_insights, monkeypatch):
+        composer = self._composer([asyncio.TimeoutError(), asyncio.TimeoutError()], monkeypatch)
+
+        with pytest.raises(Exception, match="timed out"):
+            await TestShortenRetry()._compose(composer, sample_article_insights)
+        assert composer.llm.generate_str.await_count == 2
+
+    async def test_other_errors_are_not_retried(self, sample_article_insights, monkeypatch):
+        composer = self._composer([RuntimeError("API error"), self.SHORT], monkeypatch)
+
+        with pytest.raises(RuntimeError, match="API error"):
+            await TestShortenRetry()._compose(composer, sample_article_insights)
+        assert composer.llm.generate_str.await_count == 1
+
+    async def test_shorten_rewrite_does_not_use_the_timeout_retry(self, sample_article_insights, monkeypatch):
+        # Primary call succeeds but is too long; the shorten rewrite times out once.
+        # The shorten step falls back to truncation and does not spend a retry.
+        composer = self._composer(
+            [TestShortenRetry.LONG, asyncio.TimeoutError(), self.SHORT], monkeypatch
+        )
+
+        main = await TestShortenRetry()._compose(composer, sample_article_insights)
+
+        assert main.endswith('…')
+        assert composer.llm.generate_str.await_count == 2

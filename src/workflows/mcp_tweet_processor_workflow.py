@@ -549,14 +549,17 @@ class MCPTweetProcessorWorkflow:
                     print(f"❌ {error_msg}")
                     raise
 
-                # Use MCP Tweet Composer Agent
+                # Compose only up to the variation being posted. Each variation avoids
+                # the insights of the ones before it, so variations 1..N-1 are still
+                # needed, but anything after N is discarded. On 2026-11-18 a timeout
+                # composing the unneeded Variation 4 aborted a post of Variation 2.
                 tweets = await self.tweet_composer.compose_multiple_variations(
                     article_number=article_number,
                     article_title=article['title'],
                     article_url=article_url,
                     insights=analysis['key_insights'],
                     themes=analysis.get('themes', []),
-                    num_variations=4
+                    num_variations=current_variation
                 )
                 
                 # Get the specific variation

@@ -131,6 +131,58 @@ class TestEndToEndWorkflow:
         assert workflow.state["articles_cache"] is not None
         assert len(workflow.state["articles_cache"]) > 0
 
+    @pytest.mark.parametrize("current_variation", [1, 2, 4])
+    async def test_composes_only_up_to_current_variation(self, current_variation):
+        """Variations after the one being posted are never composed (2026-11-18 incident)."""
+        url = "https://www.linkedin.com/pulse/test-aaron-lim/"
+        # Stub state loading so construction never reads the production workflow_state.json.
+        with patch.object(MCPTweetProcessorWorkflow, '_load_state', return_value={}):
+            workflow = MCPTweetProcessorWorkflow()
+        workflow.state = {
+            "current_article": 2,
+            "current_variation": current_variation,
+            "total_posts": 0,
+            "last_posted": None,
+            "articles_cache": [{
+                "number": 2, "title": "Test Article", "url": url,
+                "content": "Test content", "word_count": 100,
+                "has_title": True, "has_url": True,
+            }],
+            "analysis_2": {
+                "article_number": 2, "article_title": "Test Article", "article_url": url,
+                "key_insights": ["Insight 1", "Insight 2", "Insight 3", "Insight 4"],
+                "themes": ["AI"],
+            },
+        }
+
+        mock_mcp_context = AsyncMock()
+        mock_mcp_context.__aenter__ = AsyncMock(return_value=Mock(logger=Mock()))
+        mock_mcp_context.__aexit__ = AsyncMock(return_value=None)
+        workflow.mcp_app.run = Mock(return_value=mock_mcp_context)
+
+        tweets = [
+            Tweet(article_number=2, variation_number=v,
+                  content=f"Tweet {v}\n\n{url}\n\n#AI", character_count=50,
+                  hashtags=["#AI"], insights_used=[f"Insight {v}"], focus_theme="strategic_value")
+            for v in range(1, current_variation + 1)
+        ]
+        mock_composer = AsyncMock()
+        mock_composer.compose_multiple_variations = AsyncMock(return_value=tweets)
+        workflow.tweet_composer = mock_composer
+        workflow.content_analyzer = AsyncMock()
+
+        with patch.object(workflow, 'initialize_agents', new_callable=AsyncMock), \
+             patch.object(workflow, '_sync_articles_if_docx_newer'), \
+             patch.object(workflow, 'validate_url_format'), \
+             patch.object(workflow, 'validate_article_url'), \
+             patch.object(workflow, '_save_state'):
+            result = await workflow.run_weekly_post(post_to_twitter=False)
+
+        kwargs = mock_composer.compose_multiple_variations.await_args.kwargs
+        assert kwargs["num_variations"] == current_variation
+        assert result["tweet"]["variation_number"] == current_variation
+        assert result["tweet"]["content"].startswith(f"Tweet {current_variation}")
+
 
 @pytest.mark.integration
 @pytest.mark.asyncio

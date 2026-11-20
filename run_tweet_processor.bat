@@ -89,13 +89,12 @@ set CONSOLE_LOG=logs\console-%RUN_TS%.log
 echo Running tweet processor...
 echo Console output captured to: %CONSOLE_LOG%
 echo.
-"%PYTHON_EXE%" run_tweet_processor.py --post > "%CONSOLE_LOG%" 2>&1
+REM tee_run.py streams the output to this window as it happens and to the log,
+REM and exits with the processor's own exit code.
+"%PYTHON_EXE%" scripts\tee_run.py "%CONSOLE_LOG%" "%PYTHON_EXE%" run_tweet_processor.py --post
 
 REM Capture exit code
 set EXIT_CODE=%errorlevel%
-
-REM Echo the captured output so manual runs still show it in the window
-type "%CONSOLE_LOG%"
 
 echo.
 echo ============================================================================

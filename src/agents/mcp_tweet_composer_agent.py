@@ -90,6 +90,11 @@ Do NOT include a character count, word count, labels (such as "Tweet:"), quotati
     # left 1 of 19.
     SHORTEN_TARGET_MARGIN = 40
 
+    # A composition request that times out is retried once after this pause, so
+    # one stalled call does not abort the run (2026-11-18: a call stalled for 90 s
+    # before it was even sent). A second timeout still fails the run.
+    TIMEOUT_RETRY_DELAY_SECONDS = 5.0
+
     PRIMARY_HASHTAGS = ["#AI", "#DataStrategy", "#BusinessValue"]
     SECONDARY_HASHTAGS = [
         "#MachineLearning", "#Leadership", "#TechStrategy",
@@ -301,6 +306,16 @@ Do NOT include a character count, word count, labels (such as "Tweet:"), quotati
                   f"({len(raw_response)} -> {len(tweet_content)} chars)")
         return tweet_content
 
+    async def _request_tweet_retrying_timeout(self, prompt: str) -> str:
+        """Like _request_tweet, but retry once after a timeout. Other errors are not retried."""
+        try:
+            return await self._request_tweet(prompt)
+        except asyncio.TimeoutError:
+            print(f"⚠️  Tweet request timed out after 90 seconds; "
+                  f"retrying once in {self.TIMEOUT_RETRY_DELAY_SECONDS:g}s")
+            await asyncio.sleep(self.TIMEOUT_RETRY_DELAY_SECONDS)
+            return await self._request_tweet(prompt)
+
     async def _shorten_tweet(self, tweet_content: str, max_chars: int) -> str:
         """
         Ask the model once to rewrite an over-length tweet within max_chars.
@@ -438,7 +453,7 @@ YOUR TWEET (MAX {available_chars} chars):
         print(f"🔍 Prompt length: {len(prompt)} characters")
 
         try:
-            tweet_content = await self._request_tweet(prompt)
+            tweet_content = await self._request_tweet_retrying_timeout(prompt)
 
             # Over the limit: ask once for a shorter rewrite instead of cutting the
             # tweet off mid-sentence. If the retry fails or is still too long, the
@@ -455,7 +470,7 @@ YOUR TWEET (MAX {available_chars} chars):
                     print(f"   - {violation}")
 
         except asyncio.TimeoutError:
-            error_msg = "⚠️  LLM request timed out after 90 seconds. Please check:\n" \
+            error_msg = "⚠️  LLM request timed out twice (90 seconds each). Please check:\n" \
                        "   1. Anthropic API key is valid\n" \
                        "   2. Network connectivity to api.anthropic.com\n" \
                        "   3. No firewall blocking the connection"
