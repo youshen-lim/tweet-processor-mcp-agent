@@ -489,7 +489,7 @@ git push --force
 ---
 
 **Last Updated:** August 24, 2026  
-**Security Level:** Production-Ready  
+**Security Level:** Documented controls, not validated for production use  
 **Review Schedule:** Quarterly
 
 > **Incident note (2026-08-24):** an audit found the production Anthropic API key
