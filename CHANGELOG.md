@@ -10,9 +10,13 @@ All notable changes to this project. Dates are in 2026.
 - Tests use a temporary state file and never touch the real `workflow_state.json`.
 - Added `tzdata` to `requirements.txt`, so `ZoneInfo` can resolve `POSTING_TIMEZONE` on Windows (`--pipeline` previously failed there).
 - Rewrote the `Dockerfile` for the current entry point (Python 3.13, non-root user, state and logs in volumes, no secrets in the image) and added an allowlist `.dockerignore`. The image has not been build tested.
+- Console messages, log lines and docstrings no longer say "MCP Agent Cloud". The app uses LastMile's mcp-agent library locally and runs no MCP server or tool; messages now name mcp-agent or Claude.
+- `run_tweet_processor.bat` closes on its own: `pause` is replaced by `timeout.exe`, so a scheduled run can no longer wait for a keypress.
 
 ### Removed
 - `run_tweet_processor_timeout.bat`, which did not work and was not used.
+- The `mcp_agent_cloud: true` field in the workflow result, which nothing read and which was not true.
+- `scripts/test_docx_readability.py`, a Google Drive migration leftover that imported a removed module. Use `python scripts/convert_docx_to_md.py --dry-run` to check that `articles.docx` parses.
 
 ### Documentation corrections
 The README was checked against the code and test suite and corrected. These corrections change documentation only.

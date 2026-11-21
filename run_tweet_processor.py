@@ -46,7 +46,7 @@ from mcp_agent.config import get_settings
 def print_banner():
     """Print welcome banner."""
     print("=" * 80)
-    print("🐦 TWEET PROCESSOR - LOCAL DESKTOP RUNNER (MCP Agent Cloud)")
+    print("🐦 TWEET PROCESSOR - LOCAL DESKTOP RUNNER (mcp-agent)")
     print("=" * 80)
     print()
 
@@ -87,7 +87,7 @@ async def run_status():
 
     # Show configuration
     print("⚙️  CONFIGURATION:")
-    print(f"   Framework: MCP Agent Cloud (LastMile AI)")
+    print("   Framework: mcp-agent by LastMile AI (local; no MCP servers)")
     print(f"   LLM Provider: {os.getenv('LLM_PROVIDER', 'anthropic')}")
     print(f"   Model: {get_settings().anthropic.default_model} (mcp_agent.config.yaml)")
     print(f"   Use Real APIs: {os.getenv('USE_REAL_APIS', 'false')}")
@@ -104,7 +104,7 @@ async def run_preview():
     workflow = MCPTweetProcessorWorkflow()
     print_state(workflow.state)
 
-    print("⏳ Generating next tweet with MCP Agent Cloud...")
+    print("⏳ Generating next tweet with Claude...")
     print()
 
     # Run workflow but don't save state (post_to_twitter=False)
@@ -133,7 +133,7 @@ async def run_generate():
     workflow = MCPTweetProcessorWorkflow()
     print_state(workflow.state)
 
-    print("⏳ Generating next tweet with MCP Agent Cloud...")
+    print("⏳ Generating next tweet with Claude...")
     print()
 
     # Run workflow (simulation mode - don't post)
@@ -188,7 +188,7 @@ async def run_post():
     workflow = MCPTweetProcessorWorkflow()
     print_state(workflow.state)
 
-    print("⏳ Generating and posting tweet with MCP Agent Cloud...")
+    print("⏳ Generating and posting tweet with Claude...")
     print()
 
     # Run workflow with posting enabled
@@ -223,7 +223,7 @@ async def run_post():
 async def run_pipeline():
     """Generate pipeline of scheduled tweets for next 3 weeks."""
     print_banner()
-    print("🔮 PIPELINE MODE - Generating 3-week tweet schedule with MCP Agent Cloud")
+    print("🔮 PIPELINE MODE - Generating 3-week tweet schedule with Claude")
     print()
 
     workflow = MCPTweetProcessorWorkflow()

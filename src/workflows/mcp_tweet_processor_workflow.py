@@ -1,6 +1,6 @@
 """
-Tweet Processor Workflow - MCP Agent Cloud Implementation
-Main orchestration workflow using LastMile AI's MCP Agent Cloud framework.
+Tweet Processor Workflow - mcp-agent Implementation
+Main orchestration workflow using LastMile AI's mcp-agent framework (local; no MCP servers).
 """
 
 import asyncio
@@ -21,7 +21,7 @@ load_dotenv()
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
-# MCP Agent Cloud imports
+# mcp-agent imports
 from mcp_agent.app import MCPApp
 from mcp_agent.agents.agent import Agent
 
@@ -66,7 +66,7 @@ def _hash_prefix(value: Optional[str]) -> str:
 
 
 class MCPTweetProcessorWorkflow:
-    """Main workflow for processing newsletter articles using MCP Agent Cloud."""
+    """Main workflow for processing newsletter articles using the mcp-agent framework."""
 
     # Note: URL validation now uses format patterns instead of exact matching
     # This allows flexibility while ensuring URLs follow expected LinkedIn pulse patterns
@@ -528,7 +528,7 @@ class MCPTweetProcessorWorkflow:
         Returns:
             Result dictionary with status and details
         """
-        print(f"🚀 Starting Tweet Processor Workflow (MCP Agent Cloud)")
+        print(f"🚀 Starting Tweet Processor Workflow (mcp-agent)")
         print(f"📅 Timestamp: {datetime.now().isoformat()}")
         print()
 
@@ -540,7 +540,7 @@ class MCPTweetProcessorWorkflow:
             # Initialize MCP App and agents
             async with self.mcp_app.run() as mcp_agent_app:
                 logger = mcp_agent_app.logger
-                logger.info("MCP Agent Cloud initialized")
+                logger.info("mcp-agent app initialized")
                 
                 # Initialize agents
                 await self.initialize_agents()
@@ -654,7 +654,7 @@ class MCPTweetProcessorWorkflow:
                 cache_key = f"analysis_{current_article_num}"
                 analysis = self._reusable_cached_analysis(article, current_variation, adopt_legacy=True)
                 if analysis is None:
-                    print("🔍 Step 3: Analyzing article content with MCP Agent...")
+                    print("🔍 Step 3: Analyzing article content with Claude...")
                     logger.info("Starting article analysis")
 
                     # Use MCP Content Analyzer Agent
@@ -667,7 +667,7 @@ class MCPTweetProcessorWorkflow:
                 print()
                 
                 # Step 4: Generate tweet for current variation
-                print(f"🐦 Step 4: Composing tweet with MCP Agent (Variation {current_variation})...")
+                print(f"🐦 Step 4: Composing tweet with Claude (Variation {current_variation})...")
                 logger.info(f"Composing tweet variation {current_variation}")
 
                 # URL Validation before tweet composition
@@ -814,8 +814,7 @@ class MCPTweetProcessorWorkflow:
                     "post_result": post_result,
                     "next_article": self.state["current_article"],
                     "next_variation": self.state["current_variation"],
-                    "timestamp": datetime.now().isoformat(),
-                    "mcp_agent_cloud": True
+                    "timestamp": datetime.now().isoformat()
                 }
                 
                 print("✅ Workflow completed successfully!")

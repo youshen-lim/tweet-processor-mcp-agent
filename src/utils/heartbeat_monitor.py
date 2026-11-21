@@ -121,7 +121,7 @@ class HeartbeatMonitor:
                 print("Possible causes:")
                 print("   1. API call to Anthropic is hanging")
                 print("   2. Network connectivity issues")
-                print("   3. Blocking operation in MCP Agent Cloud library")
+                print("   3. Blocking operation in the mcp-agent library")
                 print()
                 print("Forcing application exit...")
                 print("=" * 80)

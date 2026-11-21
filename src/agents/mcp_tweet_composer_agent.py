@@ -1,5 +1,5 @@
 """
-Tweet Composer Agent - MCP Agent Cloud Implementation
+Tweet Composer Agent - mcp-agent Implementation
 Generates engaging tweets from article insights using MCP Agent framework.
 """
 
@@ -13,7 +13,7 @@ from dataclasses import dataclass
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
-# MCP Agent Cloud imports
+# mcp-agent imports
 from mcp_agent.agents.agent import Agent
 from utils.claude_llm import ClaudeLLM, claude_request_params
 
@@ -31,7 +31,7 @@ class Tweet:
 
 
 class MCPTweetComposerAgent:
-    """Agent that composes engaging tweets using MCP Agent Cloud framework."""
+    """Agent that composes engaging tweets using the mcp-agent framework."""
     
     INSTRUCTION = """You are an expert social media content creator specializing in AI, data strategy, and business technology.
 

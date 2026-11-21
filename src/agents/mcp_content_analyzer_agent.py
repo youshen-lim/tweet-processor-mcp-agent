@@ -1,5 +1,5 @@
 """
-Content Analyzer Agent - MCP Agent Cloud Implementation
+Content Analyzer Agent - mcp-agent Implementation
 Extracts key insights from newsletter articles using MCP Agent framework.
 """
 
@@ -14,7 +14,7 @@ import json
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
-# MCP Agent Cloud imports
+# mcp-agent imports
 from mcp_agent.agents.agent import Agent
 from utils.claude_llm import ClaudeLLM, claude_request_params
 
@@ -32,7 +32,7 @@ class ArticleInsights:
 
 
 class MCPContentAnalyzerAgent:
-    """Agent that analyzes article content using MCP Agent Cloud framework."""
+    """Agent that analyzes article content using the mcp-agent framework."""
     
     INSTRUCTION = """You are a content analyzer specializing in AI, data strategy, and business technology articles.
 
