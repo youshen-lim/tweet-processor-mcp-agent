@@ -345,6 +345,7 @@ copy "..\Tweet Processor using LastMile MCP Agent Cloud\*.py" .
 copy "..\Tweet Processor using LastMile MCP Agent Cloud\*.md" .
 copy "..\Tweet Processor using LastMile MCP Agent Cloud\requirements.txt" .
 copy "..\Tweet Processor using LastMile MCP Agent Cloud\Dockerfile" .
+copy "..\Tweet Processor using LastMile MCP Agent Cloud\.dockerignore" .
 copy "..\Tweet Processor using LastMile MCP Agent Cloud\.env.example" .env.example
 
 # 5. Copy source code

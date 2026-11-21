@@ -390,7 +390,8 @@ tweet-processor-mcp-agent/
 ├── mcp_agent.config.yaml           # MCP Agent configuration
 ├── mcp_agent.secrets.yaml.example  # Secrets template
 ├── workflow_state.json.example     # Example state file
-├── Dockerfile                      # Container sketch (out of date; see Deployment)
+├── Dockerfile                      # Container image (no secrets baked in; see Deployment)
+├── .dockerignore                   # Allowlist: keeps .env, secrets and state out of the build
 ├── LICENSE                         # MIT License
 ├── README.md                       # This file
 ├── QUICK_START_GUIDE.md            # Quick start guide
@@ -554,7 +555,12 @@ See [TESTING.md](TESTING.md) for complete test documentation.
 - See [MCP Agent Cloud Docs](https://docs.mcp-agent.com/cloud/overview) for instructions
 
 **Other Options:**
-- **Docker**: The included `Dockerfile` is out of date (its `CMD` points at a removed script and it does not copy the entry point or config); update it before use
+- **Docker**: The `Dockerfile` builds a Python 3.13 image that runs `run_tweet_processor.py` as a non-root user. Keys come from your `.env` at run time and are never copied into the image (`.dockerignore` is an allowlist). State and logs live in volumes:
+  ```bash
+  docker build -t tweet-processor .
+  docker run --rm --env-file .env -v tweet-state:/app/state -v tweet-logs:/app/logs tweet-processor --preview
+  ```
+  The default command is `--status`. To continue your current sequence, copy `workflow_state.json` into the `tweet-state` volume first, or the run starts at Article #1. The image has not yet been build-tested.
 - **AWS Lambda / Google Cloud Run / Heroku**: Possible targets; not set up or tested
 
 ---
@@ -803,7 +809,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - [x] One retry after a tweet-writing timeout
 - [x] Live console output in the scheduled runner (`scripts/tee_run.py`), still saved to `logs/console-<timestamp>.log`
 - [x] Re-analyze an article automatically when its text changes
-- [ ] Working container image (Dockerfile)
+- [ ] Build-test the container image (Dockerfile rewritten for the current entry point)
 - [ ] Cloud deployment templates
 - [ ] Multi-account support
 - [ ] Analytics dashboard

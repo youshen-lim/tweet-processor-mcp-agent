@@ -1,0 +1,12 @@
+# Allowlist: ignore everything, then admit only what the Dockerfile copies.
+# This keeps .env, mcp_agent.secrets.yaml, credentials/, workflow_state.json,
+# logs, .venv and publish/ out of the build context entirely.
+*
+!requirements.txt
+!run_tweet_processor.py
+!mcp_agent.config.yaml
+!src/
+!scripts/convert_docx_to_md.py
+!data/articles.md
+**/__pycache__
+**/*.pyc
