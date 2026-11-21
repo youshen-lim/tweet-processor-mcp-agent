@@ -118,7 +118,7 @@ The error "The cloud file provider exited unexpectedly" suggests OneDrive sync i
 
 **Fix**: In Task Scheduler:
 1. Open Task → Actions tab → Edit action
-2. Set "Start in (optional)" to: `C:\Users\Youshen\OneDrive\augment-projects\Tweet Processor using LastMile MCP Agent Cloud`
+2. Set "Start in (optional)" to: `C:\path\to\tweet-processor-mcp-agent`
 
 #### Issue 2: Python Not in PATH
 **Symptom**: "Python is not recognized" error  
@@ -130,7 +130,7 @@ REM Instead of:
 python run_tweet_processor.py --post
 
 REM Use:
-"C:\Users\Youshen\AppData\Local\Programs\Python\Python313\python.exe" run_tweet_processor.py --post
+"C:\Users\<you>\AppData\Local\Programs\Python\Python313\python.exe" run_tweet_processor.py --post
 ```
 
 #### Issue 3: Environment Variables Not Loaded
@@ -166,8 +166,8 @@ if exist "venv\Scripts\activate.bat" (
 
 3. **Actions Tab**:
    - Action: Start a program
-   - Program/script: `C:\Users\Youshen\OneDrive\augment-projects\Tweet Processor using LastMile MCP Agent Cloud\run_tweet_processor.bat`
-   - Start in: `C:\Users\Youshen\OneDrive\augment-projects\Tweet Processor using LastMile MCP Agent Cloud`
+   - Program/script: `C:\path\to\tweet-processor-mcp-agent\run_tweet_processor.bat`
+   - Start in: `C:\path\to\tweet-processor-mcp-agent`
 
 4. **Conditions Tab**:
    - ❌ Start the task only if the computer is on AC power (uncheck this)
@@ -241,7 +241,7 @@ The weekly "Tweet Processor" task is unaffected and remains the only scheduled t
 
 ```bash
 # 1. Test manual execution
-cd "C:\Users\Youshen\OneDrive\augment-projects\Tweet Processor using LastMile MCP Agent Cloud"
+cd "C:\path\to\tweet-processor-mcp-agent"
 python run_tweet_processor.py --status
 
 # 2. Test with timeout

@@ -331,27 +331,27 @@ Before publishing to GitHub, verify:
 
 ```bash
 # 1. Create new folder for clean repo
-mkdir "C:\Users\Youshen\Documents\tweet-processor-clean"
-cd "C:\Users\Youshen\Documents\tweet-processor-clean"
+mkdir "C:\path\to\tweet-processor-clean"
+cd "C:\path\to\tweet-processor-clean"
 
 # 2. Initialize Git
 git init
 
 # 3. Copy .gitignore FIRST
-copy "..\Tweet Processor using LastMile MCP Agent Cloud\.gitignore" .gitignore
+copy "..\tweet-processor-mcp-agent\.gitignore" .gitignore
 
 # 4. Copy safe files only
-copy "..\Tweet Processor using LastMile MCP Agent Cloud\*.py" .
-copy "..\Tweet Processor using LastMile MCP Agent Cloud\*.md" .
-copy "..\Tweet Processor using LastMile MCP Agent Cloud\requirements.txt" .
-copy "..\Tweet Processor using LastMile MCP Agent Cloud\Dockerfile" .
-copy "..\Tweet Processor using LastMile MCP Agent Cloud\.dockerignore" .
-copy "..\Tweet Processor using LastMile MCP Agent Cloud\.env.example" .env.example
+copy "..\tweet-processor-mcp-agent\*.py" .
+copy "..\tweet-processor-mcp-agent\*.md" .
+copy "..\tweet-processor-mcp-agent\requirements.txt" .
+copy "..\tweet-processor-mcp-agent\Dockerfile" .
+copy "..\tweet-processor-mcp-agent\.dockerignore" .
+copy "..\tweet-processor-mcp-agent\.env.example" .env.example
 
 # 5. Copy source code
-xcopy "..\Tweet Processor using LastMile MCP Agent Cloud\src" src\ /E /I
-xcopy "..\Tweet Processor using LastMile MCP Agent Cloud\docs" docs\ /E /I
-xcopy "..\Tweet Processor using LastMile MCP Agent Cloud\examples" examples\ /E /I
+xcopy "..\tweet-processor-mcp-agent\src" src\ /E /I
+xcopy "..\tweet-processor-mcp-agent\docs" docs\ /E /I
+xcopy "..\tweet-processor-mcp-agent\examples" examples\ /E /I
 
 # 6. Verify no sensitive files
 dir /s /b
@@ -373,7 +373,7 @@ git commit -m "Initial commit: Tweet Processor"
 
 ```bash
 # 1. Navigate to current folder
-cd "C:\Users\Youshen\OneDrive\augment-projects\Tweet Processor using LastMile MCP Agent Cloud"
+cd "C:\path\to\tweet-processor-mcp-agent"
 
 # 2. Verify .gitignore exists
 type .gitignore

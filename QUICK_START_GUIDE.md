@@ -203,7 +203,7 @@ python run_tweet_processor.py --status
 
 Your Tweet Processor is now:
 
-✅ **Fully operational** with MCP Agent Cloud framework  
+✅ **Fully operational** with the mcp-agent framework  
 ✅ **Using Claude Sonnet 5.5** for tweet generation  
 ✅ **Automated** with Windows Task Scheduler  
 ✅ **Cost-effective** at ~$2.07/year  
@@ -216,5 +216,5 @@ Sit back and let your AI-powered tweet automation do the work! 🚀
 ---
 
 **Last Updated:** October 1, 2026
-**Framework:** LastMile AI MCP Agent Cloud
+**Framework:** LastMile AI mcp-agent (runs locally; no MCP servers or tools)
 **Model:** Claude Sonnet 5.5 (`claude-sonnet-5-5`, set in `mcp_agent.config.yaml`)
