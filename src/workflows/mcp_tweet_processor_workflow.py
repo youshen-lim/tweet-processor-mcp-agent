@@ -4,7 +4,9 @@ Main orchestration workflow using LastMile AI's MCP Agent Cloud framework.
 """
 
 import asyncio
-from typing import Dict, Any, List
+import hashlib
+import unicodedata
+from typing import Dict, Any, List, Optional
 from datetime import datetime, timedelta
 import json
 import sys
@@ -34,6 +36,33 @@ POSTING_SCHEDULE = {
     "time": "11:30",
     "timezone": "America/New_York"
 }
+
+# Fingerprint stored as content_hash in each analysis_<n> entry. A future change
+# to the normalization must use a new scheme name and ship its own migration.
+CONTENT_HASH_SCHEME = "sha256-v1"
+
+
+def _normalize_article_content(content: Any) -> str:
+    """NFC-normalize and collapse every whitespace run (spaces, tabs, CRLF/LF,
+    blank lines, NBSP) to one space, so reformatting is not a content change."""
+    text = unicodedata.normalize("NFC", "" if content is None else str(content))
+    return " ".join(text.split())
+
+
+def article_content_hash(content: Any) -> str:
+    """Versioned SHA-256 of an article body (article['content'] only).
+
+    Title, URL, number and the Metadata block (word count, status) are not
+    hashed: the analyzer ignores the title, the URL has its own fail-closed
+    check, and metadata sits outside the parsed body.
+    """
+    digest = hashlib.sha256(_normalize_article_content(content).encode("utf-8")).hexdigest()
+    return f"{CONTENT_HASH_SCHEME}:{digest}"
+
+
+def _hash_prefix(value: Optional[str]) -> str:
+    """12-character digest prefix for logs (drops the scheme name)."""
+    return (value or "none").rsplit(":", 1)[-1][:12]
 
 
 class MCPTweetProcessorWorkflow:
@@ -261,10 +290,19 @@ class MCPTweetProcessorWorkflow:
         except Exception as e:
             self.logger.warning(f"Failed to write tweet audit log: {e}")
 
+    @staticmethod
+    def _state_file_path() -> str:
+        """Path of the workflow state file.
+
+        WORKFLOW_STATE_FILE overrides it (tests point it at a temp dir, like
+        TWEET_AUDIT_LOG); the default is workflow_state.json in the cwd.
+        """
+        return os.getenv('WORKFLOW_STATE_FILE', 'workflow_state.json')
+
     def _load_state(self) -> Dict[str, Any]:
         """Load workflow state from storage."""
         try:
-            with open('workflow_state.json', 'r') as f:
+            with open(self._state_file_path(), 'r') as f:
                 return json.load(f)
         except FileNotFoundError:
             return {
@@ -277,7 +315,7 @@ class MCPTweetProcessorWorkflow:
     
     def _save_state(self):
         """Save workflow state to storage."""
-        with open('workflow_state.json', 'w') as f:
+        with open(self._state_file_path(), 'w') as f:
             json.dump(self.state, f, indent=2)
 
     def _sync_articles_if_docx_newer(self):
@@ -336,6 +374,129 @@ class MCPTweetProcessorWorkflow:
             # Fail-open: never block posting because the sync failed.
             print(f"[docx-sync] Skipped ({e}); using existing articles.md")
             self.logger.warning(f"docx auto-sync skipped: {e}")
+
+    @staticmethod
+    def _has_current_hash_scheme(entry: Dict[str, Any]) -> bool:
+        value = entry.get('content_hash')
+        return isinstance(value, str) and value.startswith(f"{CONTENT_HASH_SCHEME}:")
+
+    def _adopt_legacy_analysis_hashes(self, articles: List[Dict[str, Any]]) -> int:
+        """Stamp the current content hash on legacy analysis_<n> entries.
+
+        A legacy entry has no content_hash, or one from an unknown scheme. It is
+        adopted (kept and reused, no re-analysis) when its article is loaded with
+        a non-empty body and the same URL; a URL mismatch is left for the
+        existing URL check to report. In memory only: no _save_state() here, the
+        next existing save in the run (a post always saves) persists it.
+        Sequence fields are never touched. Weekly/preview path only.
+        """
+        by_number = {a.get('number'): a for a in articles}
+        adopted = []
+        for key, entry in self.state.items():
+            if not key.startswith('analysis_') or not isinstance(entry, dict):
+                continue
+            if self._has_current_hash_scheme(entry):
+                continue
+            try:
+                number = int(key[len('analysis_'):])
+            except ValueError:
+                continue
+            article = by_number.get(number)
+            if not article or not _normalize_article_content(article.get('content')):
+                continue
+            # Adopt only an entry whose identity is verified by an exact URL match.
+            # A missing/empty URL is left unhashed; _reusable_cached_analysis
+            # re-analyzes it when its article comes up.
+            if entry.get('article_url') != article.get('url'):
+                continue
+            entry['content_hash'] = article_content_hash(article.get('content'))
+            adopted.append(number)
+        if adopted:
+            self.logger.info(
+                f"Adopted content hashes for {len(adopted)} legacy analysis cache "
+                f"entries (articles {sorted(adopted)}); no re-analysis"
+            )
+        return len(adopted)
+
+    def _reusable_cached_analysis(self, article: Dict[str, Any], current_variation: int,
+                                  adopt_legacy: bool) -> Optional[Dict[str, Any]]:
+        """Return the cached analysis for this article if it can be reused, else None.
+
+        None means "analyze": no entry, or the article's content changed since the
+        entry was made. The stale entry is not deleted here; the caller replaces
+        it only after a successful re-analysis, so a failed LLM call leaves it in
+        place. Never touches current_article/current_variation/total_posts/last_posted.
+        """
+        number = article['number']
+        cached = self.state.get(f"analysis_{number}")
+        if not cached:
+            return None
+
+        # A URL mismatch is reported by the existing URL check, which raises.
+        # Never let a URL change turn into a silent re-analysis.
+        cached_url = cached.get('article_url')
+        if cached_url and cached_url != article.get('url'):
+            return cached
+
+        # No cached URL: the entry's identity cannot be verified, so it is never
+        # adopted or reused. Re-analyze; the new entry carries both URL and hash.
+        if not cached_url:
+            self.logger.warning(
+                f"Analysis cache for Article #{number} has no article_url; re-analyzing"
+            )
+            return None
+
+        if not _normalize_article_content(article.get('content')):
+            self.logger.warning(
+                f"Article #{number} has an empty body; keeping its cached analysis"
+            )
+            return cached
+
+        current_hash = article_content_hash(article.get('content'))
+        if not self._has_current_hash_scheme(cached):
+            # Legacy entry: adopt (weekly) or reuse untouched (pipeline).
+            if adopt_legacy:
+                cached['content_hash'] = current_hash
+                self.logger.info(
+                    f"Adopted content hash {_hash_prefix(current_hash)} for legacy "
+                    f"analysis of Article #{number}; no re-analysis"
+                )
+            return cached
+
+        stored_hash = cached['content_hash']
+        if stored_hash == current_hash:
+            return cached
+
+        message = (
+            f"Analysis cache for Article #{number} invalidated: content changed "
+            f"(old {_hash_prefix(stored_hash)}, new {_hash_prefix(current_hash)}); re-analyzing"
+        )
+        self.logger.warning(message)
+        print(f"[cache] {message}")
+        if current_variation > 1:
+            self.logger.warning(
+                f"Article #{number} is mid-rotation (Variation {current_variation}): "
+                f"variations 1-{current_variation - 1} were posted from the previous "
+                f"analysis; Variation {current_variation} onward uses the new one"
+            )
+        return None
+
+    async def _analyze_and_cache(self, article: Dict[str, Any]) -> Dict[str, Any]:
+        """Analyze the article, store it as analysis_<n> with its content hash, save."""
+        insights = await self.content_analyzer.analyze_article(article)
+        analysis = {
+            'article_number': insights.article_number,
+            'article_title': insights.article_title,
+            'article_url': insights.article_url,
+            'key_insights': insights.key_insights,
+            'themes': insights.themes,
+            'expert_references': insights.expert_references,
+            'frameworks_mentioned': insights.frameworks_mentioned,
+            'content_hash': article_content_hash(article.get('content')),
+        }
+        self.state[f"analysis_{article['number']}"] = analysis
+        self._save_state()
+        return analysis
 
     async def initialize_agents(self):
         """Initialize MCP agents."""
@@ -462,6 +623,10 @@ class MCPTweetProcessorWorkflow:
                 if not processable_articles:
                     raise ValueError("No processable articles found (articles with content and URLs)")
 
+                # Give legacy cached analyses a content-hash baseline now, so later
+                # edits to any article are detected (in memory; saved by the next save).
+                self._adopt_legacy_analysis_hashes(articles)
+
                 print()
 
                 # Step 2: Get current article to post
@@ -485,31 +650,18 @@ class MCPTweetProcessorWorkflow:
                 print(f"   Title: {article['title'][:60]}...")
                 print()
                 
-                # Step 3: Analyze article content (if not cached)
+                # Step 3: Analyze article content (if not cached, or if its content changed)
                 cache_key = f"analysis_{current_article_num}"
-                if cache_key not in self.state:
+                analysis = self._reusable_cached_analysis(article, current_variation, adopt_legacy=True)
+                if analysis is None:
                     print("🔍 Step 3: Analyzing article content with MCP Agent...")
                     logger.info("Starting article analysis")
-                    
+
                     # Use MCP Content Analyzer Agent
-                    insights = await self.content_analyzer.analyze_article(article)
-                    
-                    analysis = {
-                        'article_number': insights.article_number,
-                        'article_title': insights.article_title,
-                        'article_url': insights.article_url,
-                        'key_insights': insights.key_insights,
-                        'themes': insights.themes,
-                        'expert_references': insights.expert_references,
-                        'frameworks_mentioned': insights.frameworks_mentioned
-                    }
-                    
-                    self.state[cache_key] = analysis
-                    self._save_state()
+                    analysis = await self._analyze_and_cache(article)
                     print(f"✓ Extracted {len(analysis['key_insights'])} key insights")
                     logger.info(f"Analysis complete: {len(analysis['key_insights'])} insights extracted")
                 else:
-                    analysis = self.state[cache_key]
                     print(f"✓ Using cached analysis ({len(analysis['key_insights'])} insights)")
                     logger.info("Using cached analysis")
                 print()
@@ -842,23 +994,11 @@ class MCPTweetProcessorWorkflow:
                 if not article:
                     break
 
-                # Analyze article (use cache if available)
-                cache_key = f"analysis_{current_article_num}"
-                if cache_key in self.state:
-                    analysis = self.state[cache_key]
-                else:
-                    insights = await self.content_analyzer.analyze_article(article)
-                    analysis = {
-                        'article_number': insights.article_number,
-                        'article_title': insights.article_title,
-                        'article_url': insights.article_url,
-                        'key_insights': insights.key_insights,
-                        'themes': insights.themes,
-                        'expert_references': insights.expert_references,
-                        'frameworks_mentioned': insights.frameworks_mentioned
-                    }
-                    self.state[cache_key] = analysis
-                    self._save_state()
+                # Analyze article (use cache if still valid). The pipeline never
+                # adopts or writes legacy entries; it only saves a (re-)analysis.
+                analysis = self._reusable_cached_analysis(article, current_variation, adopt_legacy=False)
+                if analysis is None:
+                    analysis = await self._analyze_and_cache(article)
 
                 # URL Validation before tweet composition
                 article_number = article['number']

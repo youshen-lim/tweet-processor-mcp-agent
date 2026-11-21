@@ -37,6 +37,9 @@ def _isolate_from_live_services(monkeypatch, tmp_path):
     """
     monkeypatch.setenv("TOKEN_USAGE_LOG", str(tmp_path / "token_usage.jsonl"))
     monkeypatch.setenv("TWEET_AUDIT_LOG", str(tmp_path / "tweet_audit.log"))
+    # Workflows load and save state here instead of the real workflow_state.json.
+    # Tests that need state must build it from fixtures.
+    monkeypatch.setenv("WORKFLOW_STATE_FILE", str(tmp_path / "workflow_state.json"))
 
     message = "Live Anthropic API call blocked in tests; mock the agent or its LLM instead"
 

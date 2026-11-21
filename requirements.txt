@@ -31,6 +31,12 @@ anthropic>=0.109.1,<1
 # =============================================================================
 python-dotenv>=1.2.2,<2
 
+# IANA time zone database for zoneinfo. Windows ships no system tz data, so
+# without this ZoneInfo('America/New_York') (POSTING_TIMEZONE) fails and
+# --pipeline crashes. Added 2026-11-20. No upper bound: tzdata releases track
+# IANA updates (DST rule changes) and should not be held back.
+tzdata>=2026.6
+
 # Word document parsing (scripts/convert_docx_to_md.py converts data/articles.docx
 # -> data/articles.md; required by the scheduled auto-sync step in the .bat runners)
 python-docx>=1.2.0,<2

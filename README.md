@@ -108,7 +108,8 @@ MCP Agent Cloud implements proven workflow patterns:
 Each article is analyzed once, not once per tweet:
 - The analysis is cached in `workflow_state.json` as `analysis_<article number>`
 - All 4 tweet variations reuse it, so an article costs 1 analysis call instead of 4
-- The cache is keyed by article number, not content. After you edit an article's text, remove its `analysis_<n>` entry to get a fresh analysis (`--clear-cache` only empties `articles_cache`)
+- Each cached analysis stores a fingerprint of the article's text (`content_hash`). When the text changes, the article is re-analyzed automatically on its next run; whitespace, line-ending and metadata-only changes (Word Count, Status) are ignored, and so are title changes. Older analyses without a fingerprint are kept and adopt the current text as their baseline, with no re-analysis
+- Changes are picked up once `articles_cache` is refreshed, which the docx auto-sync and `--clear-cache` already do
 
 ---
 
@@ -250,6 +251,7 @@ pip install -r requirements.txt
 - `openai>=2.41.1,<3` - installed for mcp-agent's OpenAI provider (not used by this project)
 - `tweepy>=4.16.0,<5` - Twitter API client
 - `python-dotenv>=1.2.2,<2` - Environment variable management
+- `tzdata>=2026.6` - IANA time zone data for `zoneinfo` (Windows has none built in; needed for `POSTING_TIMEZONE` in `--pipeline`)
 - `python-docx>=1.2.0,<2` - Word document parsing (`articles.docx` → `articles.md` converter)
 - `pytest>=9.1.0,<10`, `pytest-asyncio>=1.4.0,<2`, `pytest-mock>=3.15.1,<4` - Testing
 
@@ -412,7 +414,7 @@ tweet-processor-mcp-agent/
 │       ├── api_timeout_handler.py         # Timeout + retry-with-backoff helpers (standalone, not wired in)
 │       ├── heartbeat_monitor.py           # Stall detection helper, 3-min threshold (standalone, not wired in)
 │       └── claude_llm.py                  # Claude wrapper: thinking/effort, refusal checks, token usage log
-├── tests/                          # 185 tests, all passing
+├── tests/                          # 212 tests, all passing
 │   ├── conftest.py                 # Reusable test fixtures
 │   ├── test_article_parser.py      # 23 tests
 │   ├── test_tweet_composer.py      # 48 tests
@@ -424,6 +426,7 @@ tweet-processor-mcp-agent/
 │   ├── test_integration_workflow.py # 5 tests
 │   ├── test_claude_llm.py          # 13 tests
 │   ├── test_twitter_post_retry.py  # 9 tests
+│   ├── test_content_hash_cache.py  # 27 tests
 │   └── test_tee_run.py             # 7 tests
 ├── data/
 │   ├── articles.docx               # Source articles (authored in Word; gitignored, bring your own)
@@ -473,7 +476,7 @@ cp mcp_agent.secrets.yaml.example mcp_agent.secrets.yaml
 ### **Testing**
 
 ```powershell
-# Run the full test suite (185 tests)
+# Run the full test suite (212 tests)
 python -m pytest tests/ -v
 
 # Run specific test categories
@@ -781,7 +784,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - [x] 90-second timeouts on Claude calls (standalone retry and heartbeat helpers in `src/utils/`, not yet wired in)
 - [x] Windows Task Scheduler automation
 - [x] URL validation and integrity checks
-- [x] Automated offline test suite (185 tests; no API calls, no writes to production logs)
+- [x] Automated offline test suite (212 tests; no API calls, no writes to production logs)
 - [x] Enhanced LLM response parsing (universal code fence handling)
 - [x] Improved numbered list heuristics (arbitrary length support)
 - [x] Synchronized state logic (consistent URL deduplication)
@@ -799,7 +802,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - [x] Compose only the variations a run needs (1..N) instead of always 4
 - [x] One retry after a tweet-writing timeout
 - [x] Live console output in the scheduled runner (`scripts/tee_run.py`), still saved to `logs/console-<timestamp>.log`
-- [ ] Re-analyze an article automatically when its text changes
+- [x] Re-analyze an article automatically when its text changes
 - [ ] Working container image (Dockerfile)
 - [ ] Cloud deployment templates
 - [ ] Multi-account support

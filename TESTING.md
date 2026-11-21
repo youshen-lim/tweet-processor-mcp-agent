@@ -2,11 +2,11 @@
 
 ## Overview
 
-The Tweet Processor has a comprehensive offline test suite with **185 tests** achieving **100% pass rate** with **0 warnings**.
+The Tweet Processor has a comprehensive offline test suite with **212 tests** achieving **100% pass rate** with **0 warnings**.
 
 | Metric | Value |
 |--------|-------|
-| **Total Tests** | 185 |
+| **Total Tests** | 212 |
 | **Pass Rate** | 100% |
 | **Warnings** | 0 |
 | **Runtime** | ~35 seconds |
@@ -40,6 +40,7 @@ python -m pytest tests/ -v --tb=line -q
 | `test_claude_llm.py` | 13 | Claude wrapper: thinking/effort per model, refusal/truncation errors, cost estimate, usage log |
 | `test_twitter_post_retry.py` | 9 | Posting retries only for connection failures before the request is sent |
 | `test_tee_run.py` | 7 | Live output streaming, exit codes, log integrity |
+| `test_content_hash_cache.py` | 27 | Analysis cache content hash: normalization, legacy adoption, re-analysis on edits, weekly and pipeline paths |
 
 ---
 
@@ -99,6 +100,7 @@ Located in `tests/conftest.py`:
 
 | Fixture | Purpose |
 |---------|---------|
+| `_isolate_from_live_services` (autouse) | Blocks live Anthropic calls; points `TOKEN_USAGE_LOG`, `TWEET_AUDIT_LOG` and `WORKFLOW_STATE_FILE` at the test's temp dir |
 | `sample_workflow_state` | Sample workflow state with 5 articles |
 | `isolated_workflow_state_file` | Temporary workflow state for isolated testing |
 | `temp_articles_file` | Temporary articles markdown file |
@@ -171,5 +173,5 @@ markers =
 
 ---
 
-*Last updated: November 20, 2026 (counts verified against a full 185-test run)*
+*Last updated: November 20, 2026 (counts verified against a full 212-test run)*
 
