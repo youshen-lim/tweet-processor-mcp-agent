@@ -383,7 +383,6 @@ python run_tweet_processor.py --status
 tweet-processor-mcp-agent/
 ├── run_tweet_processor.py          # Main entry point (--post, --preview, --pipeline, --status)
 ├── run_tweet_processor.bat         # Windows Task Scheduler automation
-├── run_tweet_processor_timeout.bat # 10-minute timeout runner (currently not working; use run_tweet_processor.bat)
 ├── requirements.txt                # Python dependencies
 ├── pytest.ini                      # Test configuration
 ├── .env.example                    # Environment variables template
