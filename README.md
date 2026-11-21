@@ -28,7 +28,6 @@ The app uses the framework's app container, agents and Claude wrapper. It does n
 13. [Troubleshooting](#-troubleshooting)
 14. [Contributing](#-contributing)
 15. [License](#-license)
-16. [Corrections](#-corrections)
 
 ---
 
@@ -40,7 +39,7 @@ Tweet Processor turns newsletter articles into posts for X. It is built with **L
 
 - 📄 **Reads** newsletter content from local Markdown files (`data/articles.md`)
 - 🧠 **Analyzes** articles using Claude Sonnet 5.5 to extract strategic insights
-- ✍️ **Generates** up to 4 tweet variations per article. Each variation is prompted to use a different insight.
+- ✍️ **Generates** 4 tweet variations per article, each assigned a different insight (insights repeat only if the analysis has fewer than 4). A run writes only the variations it needs.
 - 🐦 **Posts** tweets to X through the X API
 - 📅 **Manages** posting schedule and state automatically
 
@@ -102,7 +101,7 @@ Each article is analyzed once, not once per tweet:
 ### 🤖 **Content Generation**
 - **Claude Analysis**: Asks Claude for 7 insights per article and keeps at most 7
 - **Writing Style Rules**: Active voice, no abbreviations, no hyphens, capitalize after semicolons
-- **Variation System**: Writes up to 4 tweet variations per article. Each one is prompted to use a different insight. Uniqueness has not been measured.
+- **Variation System**: Writes 4 tweet variations per article. Each one is assigned a different insight (insights repeat only if the analysis has fewer than 4). Tweet uniqueness has not been measured.
 - **Rotation**: Cycles through articles and variations
 
 ### 📅 **Flexible Scheduling & Preview**
@@ -120,7 +119,7 @@ Each article is analyzed once, not once per tweet:
 - **Preview Mode**: Test tweet generation without posting
 - **Simulated Posting**: Validate workflow before enabling live posting
 - **Character Limit Enforcement**: Ensures tweets stay within Twitter's 280-character limit
-- **Error Handling**: A failed run exits with a nonzero code, so Task Scheduler and `posting_log.txt` record the failure
+- **Error Handling**: A failed run exits with a nonzero code, which Task Scheduler and `posting_log.txt` record. If the `.bat` runner's own startup checks fail (Python or `.env` missing), it exits before writing to `posting_log.txt`, so only Task Scheduler records that failure
 - **Safe Posting Retries**: If the connection to X fails before the request is sent, the post is attempted up to 3 times in total (2 retries, after 5 and 10 seconds). The client does not retry failures that may have occurred after the request was sent, which reduces the risk of a duplicate post.
 - **Timeout Retry**: A tweet-writing request that times out (90 seconds) is retried once after a 5-second pause
 - **Secrets stay out of git and the image**: Keys load from `.env` and `mcp_agent.secrets.yaml`, which are gitignored and excluded from the Docker build context
@@ -174,10 +173,10 @@ Step 6: State Management
 
 ### **Key Design Principles**
 
-- **Insight Uniqueness**: Each variation is prompted to use a DIFFERENT key insight
+- **Insight Uniqueness**: Each variation is assigned a DIFFERENT key insight (repeats only if fewer than 4 are available)
 - **Title Exclusion**: Tweets focus on content insights, not article titles
 - **Strategic Focus**: Emphasizes "why it matters" over "what it is"
-- **Character Limit Handling**: Enforces the 280 character limit. Tweets over the limit receive one shortening rewrite. The code truncates them only if the rewrite is still too long.
+- **Character Limit Handling**: Enforces the 280 character limit. Tweets over the limit receive one shortening rewrite. The code truncates only as a last resort: if the rewrite fails, is not shorter, or is still too long.
 - **Caching**: Stores each article's analysis so its 4 variations share one analysis call
 
 ---
@@ -381,6 +380,7 @@ tweet-processor-mcp-agent/
 ├── .dockerignore                   # Allowlist: keeps .env, secrets and state out of the build
 ├── LICENSE                         # MIT License
 ├── README.md                       # This file
+├── CHANGELOG.md                    # Release notes and documentation corrections
 ├── QUICK_START_GUIDE.md            # Quick start guide
 ├── TESTING.md                      # Test suite documentation
 ├── TROUBLESHOOTING_GUIDE.md        # Troubleshooting guide
@@ -528,7 +528,7 @@ This path is untested in this project. The existing `twitter_server.py` wrapper 
 
 **Windows Desktop Application:**
 - Run manually via `python run_tweet_processor.py`
-- Configured to run weekly through Windows Task Scheduler, which runs `run_tweet_processor.bat`. The repository documents a Monday run. The Task Scheduler entry itself is not part of the repository.
+- Configured to run weekly through Windows Task Scheduler, which runs `run_tweet_processor.bat`. The author's task runs every Monday at 11:30. The Task Scheduler entry itself is not part of the repository.
 - Choose when to generate tweets by running the local command
 
 **Advantages:**
@@ -625,7 +625,7 @@ The converter backs up the previous `articles.md` and writes **atomically** (tem
 
 ### Automatic sync (no manual steps)
 
-Two layers check for a newer `articles.docx` before each run: the scheduled `.bat` runner and the workflow startup check. Editing `articles.docx` is enough. The next run picks it up.
+Two layers check for a newer `articles.docx` before each run: the scheduled `.bat` runner and the workflow startup check. Editing `articles.docx` is enough: the next run picks it up if the conversion succeeds. If the conversion fails, the run keeps the last good `articles.md`.
 
 - **Option A (runner):** `run_tweet_processor.bat` calls `convert_docx_to_md.py --if-newer --clear-cache` before running. This is a no-op unless the `.docx` is newer, and it is **fail-open** — it logs the result and posts the last-good `articles.md` if conversion fails, rather than skipping the week.
 - **Option B (workflow):** the workflow itself re-checks on startup (`_sync_articles_if_docx_newer`) and regenerates if the `.docx` is newer — a safety net for when the app is run directly instead of through the `.bat`.
@@ -778,6 +778,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 **Current Version:** 2.4.0
 **Status:** Personal project configured to run weekly from Windows Task Scheduler on the author's computer
 **Last Updated:** November 20, 2026
+**Changes:** see [CHANGELOG.md](CHANGELOG.md)
 
 ### **Roadmap**
 
@@ -789,7 +790,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - [x] Local Markdown article parser (replaced Google Drive)
 - [x] Article pre-analyzer with caching (retired July 2026 — the main workflow analyzes and caches inline)
 - [x] 90-second timeouts on Claude calls (standalone retry and heartbeat helpers in `src/utils/`, not yet wired in)
-- [x] Windows Task Scheduler runner script (`run_tweet_processor.bat`). The scheduler entry and run history are outside the repository and unverified.
+- [x] Windows Task Scheduler runner script (`run_tweet_processor.bat`). The scheduler entry and run history are outside the repository.
 - [x] URL validation and integrity checks
 - [x] Automated offline test suite (212 tests; no API calls, no writes to production logs)
 - [x] LLM response parsing with universal code fence handling
@@ -816,32 +817,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - [ ] Multi-account support
 - [ ] Analytics dashboard
 - [ ] Thread generation support
-
----
-
-## 📝 Corrections
-
-The following items were corrected on **November 20, 2026** after a check against the code and test suite in this repository. This correction changes documentation only. The code is unchanged.
-
-| Item | Previously stated | Corrected to | Cause |
-|------|-------------------|--------------|-------|
-| Framework name | MCP Agent Cloud framework | mcp-agent framework | MCP Agent Cloud is LastMile's hosted deployment service. This project does not use it. |
-| MCP use | Title and Agent Computer Interface row implied that MCP servers and tools run | No MCP server or tool runs | The `twitter_server.py` wrapper is disabled, and the agents attach no servers. |
-| Badge | MCP Agent Cloud | Built with mcp-agent | The project is not deployed on MCP Agent Cloud. |
-| Cloud deployment | Deploy to LastMile MCP Agent Cloud for automated scheduling | Not set up or tested | No deployment configuration exists in the repository. |
-| Post retries | Retried up to 3 times | Up to 3 attempts in total (2 retries) | `POST_CONNECT_ATTEMPTS = 3` counts attempts, not retries. |
-| Duplicate posts | A tweet cannot be posted twice | The retry rule reduces the risk of a duplicate post | The client skips retries only for failures it classifies as after sending. |
-| Status | Production ready | Personal project configured to run weekly | No evidence supports the label. The scheduler entry is outside the repository. |
-| MCP ecosystem | 100+ MCP servers | Removed | The linked repository does not support the count. |
-| Comparison table | Star ratings for mcp-agent and alternatives | Removed | No benchmark or source supports the ratings. |
-| Insight count | Extracts 7 insights | Asks for 7 and keeps at most 7 | The model can return fewer than 7. |
-| Variations | 4 unique tweet variations | Up to 4 variations, each prompted to use a different insight | Uniqueness has not been measured. |
-| Cloud costs | No cloud costs | No cloud hosting cost; API charges may apply | The project calls the Anthropic and X APIs. |
-| Install time | Installation (5 Minutes) | Installation | X developer access and credential setup can take longer. |
-| Discussions link | Start a discussion | Removed | Discussions are disabled on the repository. |
-| Limitations | No section | New Limitations section | The README had no limitations section. |
-
-The 212 test count, the per file test counts, the model dates and the dependency bounds were rechecked and are accurate. The Dockerfile was reviewed against the current entry point but was not build tested.
 
 ---
 
