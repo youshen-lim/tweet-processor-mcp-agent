@@ -1,9 +1,11 @@
-# 🐦 Tweet Processor - AI-Powered Newsletter-to-Twitter Automation
+# 🐦 Tweet Processor: Newsletter to X Automation
 
-**Transform your newsletter articles into engaging Twitter/X content using AI and the Model Context Protocol (MCP)**
+**Turns newsletter articles into posts for X with Claude Sonnet 5.5. Built with LastMile AI's mcp-agent framework.**
+
+The app uses the framework's app container, agents and Claude wrapper. It does not run any MCP server or MCP tool. The MCP server wrapper in the code is disabled.
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
-[![MCP Agent](https://img.shields.io/badge/MCP-Agent%20Cloud-green.svg)](https://docs.mcp-agent.com/)
+[![Built with mcp-agent](https://img.shields.io/badge/built%20with-mcp--agent-green.svg)](https://docs.mcp-agent.com/)
 [![Claude Sonnet 5.5](https://img.shields.io/badge/Claude-Sonnet%205.5-purple.svg)](https://www.anthropic.com/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
@@ -12,7 +14,7 @@
 ## 📖 Table of Contents
 
 1. [Overview](#-overview)
-2. [Why MCP Agent Cloud?](#-why-mcp-agent-cloud)
+2. [Why mcp-agent?](#-why-mcp-agent)
 3. [Features](#-features)
 4. [Architecture](#-architecture)
 5. [Quick Start](#-quick-start)
@@ -22,42 +24,44 @@
 9. [Project Structure](#-project-structure)
 10. [Development](#-development)
 11. [Deployment](#-deployment)
-12. [Troubleshooting](#-troubleshooting)
-13. [Contributing](#-contributing)
-14. [License](#-license)
+12. [Limitations](#-limitations)
+13. [Troubleshooting](#-troubleshooting)
+14. [Contributing](#-contributing)
+15. [License](#-license)
+16. [Corrections](#-corrections)
 
 ---
 
 ## 🎯 Overview
 
-Tweet Processor is an intelligent automation system that transforms newsletter articles into engaging Twitter/X content using AI. Built with **LastMile AI's MCP Agent Cloud framework** and **Claude Sonnet 5.5**, it provides a professional, maintainable solution for content automation.
+Tweet Processor turns newsletter articles into posts for X. It is built with **LastMile AI's mcp-agent framework** and **Claude Sonnet 5.5**. It is configured to run once a week from Windows Task Scheduler on the author's computer.
 
 ### **What It Does**
 
 - 📄 **Reads** newsletter content from local Markdown files (`data/articles.md`)
 - 🧠 **Analyzes** articles using Claude Sonnet 5.5 to extract strategic insights
-- ✍️ **Generates** 4 unique tweet variations per article
-- 🐦 **Posts** tweets to Twitter/X with professional writing style
+- ✍️ **Generates** up to 4 tweet variations per article. Each variation is prompted to use a different insight.
+- 🐦 **Posts** tweets to X through the X API
 - 📅 **Manages** posting schedule and state automatically
 
 ### **Who It's For**
 
-- Newsletter creators who want to amplify their content on Twitter
+- Newsletter writers who want to share their articles on X
 - Content marketers automating social media distribution
-- Developers learning AI agent patterns and MCP integration
-- Anyone interested in building production-ready AI workflows
+- Developers learning AI agent patterns with the mcp-agent framework
+- Developers who want a small, working example of a scheduled LLM workflow
 
 ---
 
-## 🌟 Why MCP Agent Cloud?
+## 🌟 Why mcp-agent?
 
-> **Note:** The decision to use MCP Agent Cloud was informed by conversations with **Andrew Hoh**, co-founder of LastMile AI, who shared insights into the powerful capabilities and composable patterns of the framework.
+> **Note:** The decision to use LastMile AI's mcp-agent framework was informed by conversations with **Andrew Hoh**, cofounder of LastMile AI, who discussed the composable patterns of the framework.
 
-This project uses **LastMile AI's MCP Agent Cloud framework** instead of alternatives like LangChain, direct API calls, or custom frameworks. Here's why:
+This project uses **LastMile AI's open source mcp-agent framework** instead of LangChain, direct API calls or a custom framework. The reasons follow.
 
 ### **1. Follows Anthropic's "Building Effective Agents" Principles**
 
-Based on [Anthropic's research](https://www.anthropic.com/research/building-effective-agents) (December 2024), the most successful agent implementations use:
+[Anthropic's article](https://www.anthropic.com/research/building-effective-agents) (December 2024) recommends simple, composable patterns over complex frameworks. It describes the building blocks below. This project uses them as noted:
 
 - ✅ **Simple, composable patterns** (not complex frameworks)
 - ✅ **Clear separation of concerns** (workflows vs agents)
@@ -65,49 +69,29 @@ Based on [Anthropic's research](https://www.anthropic.com/research/building-effe
 - ✅ **Prompt chaining** (content analysis → tweet composition)
 - ✅ **Human oversight checkpoints** (optional preview and manual review modes before posting)
 
-MCP Agent Cloud implements these patterns natively. This project uses it for the app container, the agents, and the Claude wrapper; posting to X is a direct API call, not an MCP server.
+The mcp-agent framework implements these patterns. This project uses it for the app container, the agents and the Claude wrapper. Posting to X is a direct API call, not an MCP server.
 
-### **2. Model Context Protocol (MCP) Standardization**
+### **2. Model Context Protocol (MCP)**
 
-**MCP Benefits:**
-- **Interoperability**: Any tool exposed by MCP servers works seamlessly
-- **Composability**: Chain together local files (read) → Claude (analyze) → Twitter (post), with any step movable behind an MCP server later
-- **Maintainability**: MCP servers handle API complexity, your code stays clean
-- **Future-proof**: As more services adopt MCP, you can integrate them easily
+MCP is an open standard for connecting AI applications to tools and data ([modelcontextprotocol.io](https://modelcontextprotocol.io/)). If posting to X moved behind an MCP server, the agents could call it as a tool. This project does not do that yet.
 
-**Current MCP Ecosystem:**
-- 100+ MCP servers available (GitHub, Slack, databases, etc.)
-- Growing rapidly with community contributions
-- Standardized interface across all services
+### **3. Patterns Used**
 
-### **3. Comparison with Alternatives**
-
-| Aspect | MCP Agent Cloud | LangChain/LangGraph | Direct API Calls | Custom Framework |
-|--------|----------------|---------------------|------------------|------------------|
-| **Simplicity** | ⭐⭐⭐⭐⭐ | ⭐⭐ | ⭐⭐⭐⭐ | ⭐⭐ |
-| **Composability** | ⭐⭐⭐⭐⭐ | ⭐⭐⭐ | ⭐⭐ | ⭐⭐⭐⭐ |
-| **Debuggability** | ⭐⭐⭐⭐⭐ | ⭐⭐ | ⭐⭐⭐⭐⭐ | ⭐⭐⭐ |
-| **Interoperability** | ⭐⭐⭐⭐⭐ | ⭐⭐⭐ | ⭐ | ⭐⭐ |
-| **Future-proof** | ⭐⭐⭐⭐⭐ | ⭐⭐⭐ | ⭐⭐ | ⭐⭐ |
-| **Learning Curve** | ⭐⭐⭐⭐ | ⭐⭐ | ⭐⭐⭐⭐⭐ | ⭐⭐ |
-
-### **4. Production-Ready Patterns**
-
-MCP Agent Cloud implements proven workflow patterns:
+The project uses these patterns from the mcp-agent framework and the Anthropic article:
 
 | Pattern | Implementation | Benefit |
 |---------|---------------|---------|
 | **Augmented LLM** | Claude Sonnet 5.5 via `ClaudeLLM` (extends mcp-agent's `AnthropicAugmentedLLM`) | One place for model settings, refusal checks, and usage logging |
 | **Prompt Chaining** | Analysis → Composition → Posting | Break complex task into manageable steps |
-| **Agent-Computer Interface** | Well-documented MCP tools | Clear, reliable tool usage |
+| **Agent-Computer Interface** | Not used. The agents call no tools. | Would apply if posting moved behind an MCP server |
 | **State Management** | `workflow_state.json` | Track progress, cache analyses |
 | **Human-in-the-Loop** | Optional preview, pipeline, and manual review modes | Review before posting when you want it |
 
-### **5. Cost Optimization**
+### **4. Analysis Call Reuse**
 
 Each article is analyzed once, not once per tweet:
 - The analysis is cached in `workflow_state.json` as `analysis_<article number>`
-- All 4 tweet variations reuse it, so an article costs 1 analysis call instead of 4
+- All 4 tweet variations reuse it, so an article uses 1 analysis call instead of 4
 - Each cached analysis stores a fingerprint of the article's text (`content_hash`). When the text changes, the article is re-analyzed automatically on its next run; whitespace, line-ending and metadata-only changes (Word Count, Status) are ignored, and so are title changes. Older analyses without a fingerprint are kept and adopt the current text as their baseline, with no re-analysis
 - Changes are picked up once `articles_cache` is refreshed, which the docx auto-sync and `--clear-cache` already do
 
@@ -115,11 +99,11 @@ Each article is analyzed once, not once per tweet:
 
 ## ✨ Features
 
-### 🤖 **Intelligent Content Generation**
-- **AI-Powered Analysis**: Extracts 7 high-level, strategic insights from newsletter articles
-- **Professional Writing Style**: Active voice, no abbreviations, no hyphens, capitalize after semicolons
-- **Variation System**: Creates 4 unique tweet variations per article, each highlighting a different insight
-- **Smart Rotation**: Automatically cycles through articles and variations
+### 🤖 **Content Generation**
+- **Claude Analysis**: Asks Claude for 7 insights per article and keeps at most 7
+- **Writing Style Rules**: Active voice, no abbreviations, no hyphens, capitalize after semicolons
+- **Variation System**: Writes up to 4 tweet variations per article. Each one is prompted to use a different insight. Uniqueness has not been measured.
+- **Rotation**: Cycles through articles and variations
 
 ### 📅 **Flexible Scheduling & Preview**
 - **Pipeline Preview**: Generate and review 3 weeks of scheduled tweets before posting
@@ -127,19 +111,19 @@ Each article is analyzed once, not once per tweet:
 - **Manual Review Mode**: Generate the next tweet to a file and post it yourself
 - **State Management**: Tracks posting history and advances to the next variation after each successful post
 
-### 🔗 **Seamless Integrations**
+### 🔗 **Integrations**
 - **Local Files**: Reads newsletter content from local Markdown files (`data/articles.md`)
 - **Twitter/X API**: Posts tweets with OAuth 1.0a through a Tweepy client (`TwitterClient` in `src/mcp_servers/twitter_server.py`); the MCP server wrapper in that file is currently disabled
-- **MCP Extensibility**: Easy to add new integrations (Slack, GitHub, databases, etc.)
+- **MCP extensibility (not yet used)**: mcp-agent can attach MCP servers to an agent through `server_names`. This project attaches none.
 
-### 🛡️ **Safe & Reliable**
+### 🛡️ **Safety Features**
 - **Preview Mode**: Test tweet generation without posting
 - **Simulated Posting**: Validate workflow before enabling live posting
 - **Character Limit Enforcement**: Ensures tweets stay within Twitter's 280-character limit
-- **Error Handling**: Graceful failure recovery with detailed logging
-- **Safe Posting Retries**: If the connection to X fails before the request is sent, posting is retried up to 3 times; failures after sending are never retried, so a tweet cannot be posted twice
+- **Error Handling**: A failed run exits with a nonzero code, so Task Scheduler and `posting_log.txt` record the failure
+- **Safe Posting Retries**: If the connection to X fails before the request is sent, the post is attempted up to 3 times in total (2 retries, after 5 and 10 seconds). The client does not retry failures that may have occurred after the request was sent, which reduces the risk of a duplicate post.
 - **Timeout Retry**: A tweet-writing request that times out (90 seconds) is retried once after a 5-second pause
-- **Secrets Management**: Secure handling of API keys and credentials
+- **Secrets stay out of git and the image**: Keys load from `.env` and `mcp_agent.secrets.yaml`, which are gitignored and excluded from the Docker build context
 
 ---
 
@@ -150,7 +134,7 @@ Each article is analyzed once, not once per tweet:
 ```
 Windows Desktop Application
 ├── Manual Execution (run_tweet_processor.py)
-├── MCP Agent Cloud Framework
+├── mcp-agent framework
 │   ├── MCPApp (application container)
 │   └── ClaudeLLM (Claude Sonnet 5.5, extends AnthropicAugmentedLLM)
 ├── TwitterClient (Tweepy, direct X API v2 calls)
@@ -169,14 +153,14 @@ Step 1: Read Document (Local Files)
 Step 2: Parse Articles
    ↓
 Step 3: Analyze Content (Claude Sonnet 5.5)
-   ↓  Extract 7 strategic insights per article
+   ↓  Ask for 7 insights per article (keep at most 7)
    ↓  Cache analysis in workflow_state.json
    ↓
 Step 4: Compose Tweet (Claude Sonnet 5.5)
    ↓  Compose variations 1..N for this week's variation N
    ↓  (each avoids the insights used by the ones before it)
    ↓  Retry once if a request times out
-   ↓  Enforce professional writing style
+   ↓  Apply the configured writing style rules
    ↓  Ensure 280-character limit
    ↓
 Step 5: Post Tweet (X API via Tweepy)
@@ -190,10 +174,10 @@ Step 6: State Management
 
 ### **Key Design Principles**
 
-- **Insight Uniqueness**: Each variation highlights a DIFFERENT key insight
+- **Insight Uniqueness**: Each variation is prompted to use a DIFFERENT key insight
 - **Title Exclusion**: Tweets focus on content insights, not article titles
 - **Strategic Focus**: Emphasizes "why it matters" over "what it is"
-- **Character Optimization**: Aggressive enforcement of 280-character limit; over-length tweets get one "shorten" rewrite before truncation is used as a last resort
+- **Character Limit Handling**: Enforces the 280 character limit. Tweets over the limit receive one shortening rewrite. The code truncates them only if the rewrite is still too long.
 - **Caching**: Stores each article's analysis so its 4 variations share one analysis call
 
 ---
@@ -206,7 +190,7 @@ Step 6: State Management
 - **Twitter Developer Account** with API credentials
 - **Anthropic API key** (for Claude Sonnet 5.5)
 
-### **Installation (5 Minutes)**
+### **Installation**
 
 ```powershell
 # 1. Clone the repository
@@ -246,7 +230,7 @@ pip install -r requirements.txt
 
 **Dependencies** (versions are pinned with upper bounds in `requirements.txt`):
 - `mcp>=1.27.2,<1.28` - Model Context Protocol SDK (capped at the minor version; a minor bump broke a run in August 2026)
-- `mcp-agent[anthropic,openai]>=0.2.6,<0.3` - MCP Agent Cloud framework
+- `mcp-agent[anthropic,openai]>=0.2.6,<0.3` - mcp-agent framework (LastMile AI, Apache 2.0)
 - `anthropic>=0.109.1,<1` - Claude API client
 - `openai>=2.41.1,<3` - installed for mcp-agent's OpenAI provider (not used by this project)
 - `tweepy>=4.16.0,<5` - Twitter API client
@@ -293,7 +277,7 @@ POSTING_TIME=11:30
 POSTING_TIMEZONE=America/New_York
 ```
 
-### **MCP Agent Configuration (mcp_agent.config.yaml)**
+### **mcp-agent Configuration (mcp_agent.config.yaml)**
 
 ```yaml
 execution_engine: asyncio
@@ -313,6 +297,8 @@ anthropic:
   default_model: claude-sonnet-5-5   # the only place the model is set
 ```
 
+The `twitter` server entry is a placeholder. No agent lists it in `server_names`, and `twitter_server.py` has no server entry point, so mcp-agent never starts it. Posting uses `TwitterClient` directly.
+
 `default_model` is the single source of truth for which Claude model runs. The
 agents call Claude through `src/utils/claude_llm.py` (`ClaudeLLM`), which sends
 the per-model thinking and effort settings (Sonnet 5.5: lowest thinking setting,
@@ -328,6 +314,8 @@ touches `workflow_state.json`:
 ```
 
 It writes a side-by-side report to `logs/model_dry_run/<timestamp>/report.md`.
+
+After November 30, 2026, `claude-sonnet-4-5-20250929` is retired and this comparison will fail. Use another active model ID.
 
 **Model history:** Claude Sonnet 4.5 (`claude-sonnet-4-5-20250929`) was deprecated
 on 2026-09-30 and retires on 2026-11-30. This project moved to Claude Sonnet 5.5,
@@ -386,7 +374,7 @@ tweet-processor-mcp-agent/
 ├── requirements.txt                # Python dependencies
 ├── pytest.ini                      # Test configuration
 ├── .env.example                    # Environment variables template
-├── mcp_agent.config.yaml           # MCP Agent configuration
+├── mcp_agent.config.yaml           # mcp-agent configuration
 ├── mcp_agent.secrets.yaml.example  # Secrets template
 ├── workflow_state.json.example     # Example state file
 ├── Dockerfile                      # Container image (no secrets baked in; see Deployment)
@@ -399,7 +387,7 @@ tweet-processor-mcp-agent/
 ├── SECURITY_GUIDE.md               # Security best practices
 ├── src/
 │   ├── agents/
-│   │   ├── mcp_content_analyzer_agent.py  # 7 strategic insights extraction
+│   │   ├── mcp_content_analyzer_agent.py  # Asks for 7 insights per article
 │   │   └── mcp_tweet_composer_agent.py    # 4 tweet variations per article
 │   ├── workflows/
 │   │   └── mcp_tweet_processor_workflow.py # Core orchestration engine
@@ -414,7 +402,7 @@ tweet-processor-mcp-agent/
 │       ├── api_timeout_handler.py         # Timeout + retry-with-backoff helpers (standalone, not wired in)
 │       ├── heartbeat_monitor.py           # Stall detection helper, 3-min threshold (standalone, not wired in)
 │       └── claude_llm.py                  # Claude wrapper: thinking/effort, refusal checks, token usage log
-├── tests/                          # 212 tests, all passing
+├── tests/                          # 212 tests (all passed on November 20, 2026)
 │   ├── conftest.py                 # Reusable test fixtures
 │   ├── test_article_parser.py      # 23 tests
 │   ├── test_tweet_composer.py      # 48 tests
@@ -496,8 +484,8 @@ See [TESTING.md](TESTING.md) for complete test documentation.
 ### **Code Structure**
 
 **Agents** (`src/agents/`):
-- `mcp_content_analyzer_agent.py` - Analyzes articles and extracts 7 strategic insights
-- `mcp_tweet_composer_agent.py` - Composes tweets with professional writing style
+- `mcp_content_analyzer_agent.py` - Analyzes articles and asks Claude for 7 insights (keeps at most 7)
+- `mcp_tweet_composer_agent.py` - Composes tweets using the configured writing style rules
 
 **Workflows** (`src/workflows/`):
 - `mcp_tweet_processor_workflow.py` - Orchestrates the entire tweet generation process
@@ -523,6 +511,8 @@ See [TESTING.md](TESTING.md) for complete test documentation.
 3. Add server configuration to `mcp_agent.config.yaml`
 4. Update workflow to use new server
 
+This path is untested in this project. The existing `twitter_server.py` wrapper is disabled. See the mcp-agent examples for a working server.
+
 **Example: Modify tweet style**
 
 1. Edit `src/agents/mcp_tweet_composer_agent.py`
@@ -538,20 +528,21 @@ See [TESTING.md](TESTING.md) for complete test documentation.
 
 **Windows Desktop Application:**
 - Run manually via `python run_tweet_processor.py`
-- Automated weekly by Windows Task Scheduler, which runs `run_tweet_processor.bat` every Monday
-- Full control over when tweets are generated
+- Configured to run weekly through Windows Task Scheduler, which runs `run_tweet_processor.bat`. The repository documents a Monday run. The Task Scheduler entry itself is not part of the repository.
+- Choose when to generate tweets by running the local command
 
 **Advantages:**
-- ✅ Complete control over execution
+- ✅ Choose when to run the application
 - ✅ Manual review before posting
-- ✅ No cloud costs
-- ✅ Easy debugging
+- ✅ No cloud hosting cost. Anthropic and X API charges may still apply.
+- ✅ Inspect local logs and state files when debugging
 
-### **Cloud Deployment (Optional)**
+### **Cloud Deployment (Not Set Up)**
 
-**LastMile AI MCP Agent Cloud:**
-- Deploy to LastMile MCP Agent Cloud for automated scheduling
-- See [MCP Agent Cloud Docs](https://docs.mcp-agent.com/cloud/overview) for instructions
+**LastMile AI MCP Agent Cloud (not set up or tested):**
+- mcp-agent apps can be deployed to LastMile's hosted environment with `mcp-agent deploy`.
+- This project has not been deployed there.
+- See the [MCP Agent Cloud docs](https://docs.mcp-agent.com/cloud/overview).
 
 **Other Options:**
 - **Docker**: The `Dockerfile` builds a Python 3.13 image that runs `run_tweet_processor.py` as a non-root user. Keys come from your `.env` at run time and are never copied into the image (`.dockerignore` is an allowlist). State and logs live in volumes:
@@ -559,8 +550,20 @@ See [TESTING.md](TESTING.md) for complete test documentation.
   docker build -t tweet-processor .
   docker run --rm --env-file .env -v tweet-state:/app/state -v tweet-logs:/app/logs tweet-processor --preview
   ```
-  The default command is `--status`. To continue your current sequence, copy `workflow_state.json` into the `tweet-state` volume first, or the run starts at Article #1. The image has not yet been build-tested.
-- **AWS Lambda / Google Cloud Run / Heroku**: Possible targets; not set up or tested
+  The default command is `--status`. To continue your current sequence, copy `workflow_state.json` into the `tweet-state` volume first, or the run starts at Article #1. The Dockerfile matches the current entry point, but the image has not been build tested. Pipeline files are written inside the container and are lost with `--rm`.
+- **AWS Lambda / Google Cloud Run / Heroku**: Not set up or tested
+
+---
+
+## 🚧 Limitations
+
+- No MCP server or MCP tool runs. The `twitter_server.py` wrapper is disabled, and the agents attach no servers.
+- The project is not deployed to MCP Agent Cloud or any cloud service.
+- The schedule depends on one Windows computer being on and on Windows Task Scheduler. The Task Scheduler entry is not part of the repository.
+- The Dockerfile matches the current entry point, but the image has not been build tested.
+- The test suite is offline. It mocks Claude and the X API, so it does not prove that live posting works.
+- The timeout retry and heartbeat helpers in `src/utils/` are not wired in.
+- There are no measured results on tweet quality, tweet uniqueness or engagement.
 
 ---
 
@@ -622,7 +625,7 @@ The converter backs up the previous `articles.md` and writes **atomically** (tem
 
 ### Automatic sync (no manual steps)
 
-Both scheduled runners auto-sync before doing their work, so simply editing `articles.docx` is enough — the next run picks it up:
+Two layers check for a newer `articles.docx` before each run: the scheduled `.bat` runner and the workflow startup check. Editing `articles.docx` is enough. The next run picks it up.
 
 - **Option A (runner):** `run_tweet_processor.bat` calls `convert_docx_to_md.py --if-newer --clear-cache` before running. This is a no-op unless the `.docx` is newer, and it is **fail-open** — it logs the result and posts the last-good `articles.md` if conversion fails, rather than skipping the week.
 - **Option B (workflow):** the workflow itself re-checks on startup (`_sync_articles_if_docx_newer`) and regenerates if the `.docx` is newer — a safety net for when the app is run directly instead of through the `.bat`.
@@ -678,7 +681,6 @@ python run_tweet_processor.py --preview
 - 🔒 Read [SECURITY_GUIDE.md](SECURITY_GUIDE.md) for security questions
 - 🧪 Read [TESTING.md](TESTING.md) for test documentation
 - 🐛 [Open an issue](https://github.com/youshen-lim/tweet-processor-mcp-agent/issues) for bugs
-- 💬 [Start a discussion](https://github.com/youshen-lim/tweet-processor-mcp-agent/discussions) for questions
 
 ---
 
@@ -730,19 +732,19 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ### **Frameworks & Tools**
 
-- **[LastMile AI](https://lastmileai.dev/)** - MCP Agent Cloud framework ([GitHub](https://github.com/lastmile-ai/mcp-agent), [Docs](https://docs.mcp-agent.com/cloud/overview))
+- **[LastMile AI](https://lastmileai.dev/)** - mcp-agent framework ([GitHub](https://github.com/lastmile-ai/mcp-agent), [Docs](https://docs.mcp-agent.com/))
 - **[Anthropic](https://www.anthropic.com/)** - Claude Sonnet 5.5 LLM
 - **[Model Context Protocol](https://modelcontextprotocol.io/)** - Standardized AI-service interface
 
 ### **Inspiration**
 
 - **[Anthropic's "Building Effective Agents"](https://www.anthropic.com/research/building-effective-agents)** - Agent design patterns
-- **[MCP Agent GitHub](https://github.com/lastmile-ai/mcp-agent)** - Reference implementation
+- **[mcp-agent GitHub](https://github.com/lastmile-ai/mcp-agent)** - Reference implementation
 
 ### **Community**
 
 - Thanks to all contributors and users
-- Special thanks to the MCP community for building amazing servers
+- Thanks to the Model Context Protocol maintainers
 
 ---
 
@@ -759,43 +761,43 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ### **External Resources**
 
-- [MCP Agent Cloud Documentation](https://docs.mcp-agent.com/cloud/overview)
-- [Anthropic API Documentation](https://docs.anthropic.com/)
-- [Twitter API Documentation](https://developer.twitter.com/en/docs)
+- [mcp-agent Documentation](https://docs.mcp-agent.com/)
+- [Claude API Documentation](https://platform.claude.com/docs/)
+- [X API Documentation](https://docs.x.com/)
 
 
 ### **Related Projects**
 
-- [MCP Servers Collection](https://github.com/modelcontextprotocol/servers)
-- [Anthropic Cookbook](https://github.com/anthropics/anthropic-cookbook)
+- [MCP Reference Servers](https://github.com/modelcontextprotocol/servers)
+- [Claude Cookbooks](https://github.com/anthropics/claude-cookbooks)
 
 ---
 
 ## 📊 Project Status
 
 **Current Version:** 2.4.0
-**Status:** Production-ready, running weekly automated execution
+**Status:** Personal project configured to run weekly from Windows Task Scheduler on the author's computer
 **Last Updated:** November 20, 2026
 
 ### **Roadmap**
 
 - [x] Core tweet generation functionality
-- [x] MCP Agent Cloud integration
-- [x] Professional writing style enforcement
+- [x] mcp-agent framework integration (MCPApp, Agent, AnthropicAugmentedLLM)
+- [x] Configured writing style rules
 - [x] State management and caching
 - [x] Pipeline preview feature
 - [x] Local Markdown article parser (replaced Google Drive)
 - [x] Article pre-analyzer with caching (retired July 2026 — the main workflow analyzes and caches inline)
 - [x] 90-second timeouts on Claude calls (standalone retry and heartbeat helpers in `src/utils/`, not yet wired in)
-- [x] Windows Task Scheduler automation
+- [x] Windows Task Scheduler runner script (`run_tweet_processor.bat`). The scheduler entry and run history are outside the repository and unverified.
 - [x] URL validation and integrity checks
 - [x] Automated offline test suite (212 tests; no API calls, no writes to production logs)
-- [x] Enhanced LLM response parsing (universal code fence handling)
-- [x] Improved numbered list heuristics (arbitrary length support)
+- [x] LLM response parsing with universal code fence handling
+- [x] Numbered list parsing with arbitrary length support
 - [x] Synchronized state logic (consistent URL deduplication)
 - [x] Defensive logging (safe metadata access)
 - [x] Word (.docx) article authoring with `convert_docx_to_md.py` converter
-- [x] Automatic .docx → .md sync in scheduled runners (fail-open) and workflow
+- [x] Automatic .docx → .md sync in the scheduled runner (fail open) and the workflow
 - [x] Tweet content sanitizer (strips LLM meta-commentary such as character counts before posting)
 - [x] Tweet audit log (`logs/tweet_audit.log` records every composed and posted tweet verbatim)
 - [x] Per-run console capture in the scheduled runner (`logs/console-<timestamp>.log`)
@@ -803,16 +805,43 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - [x] Per-call token usage and cost log (`logs/token_usage.jsonl`)
 - [x] Shorten-rewrite retry for over-length tweets (truncation only as a fallback)
 - [x] Non-zero exit code on failed runs, so Task Scheduler and `posting_log.txt` record failures
-- [x] Retry posting when the connection to X fails before the request is sent (never after, to avoid duplicate tweets)
+- [x] Retry posting when the connection to X fails before the request is sent (never after, which reduces the risk of duplicate tweets)
 - [x] Compose only the variations a run needs (1..N) instead of always 4
 - [x] One retry after a tweet-writing timeout
 - [x] Live console output in the scheduled runner (`scripts/tee_run.py`), still saved to `logs/console-<timestamp>.log`
 - [x] Re-analyze an article automatically when its text changes
 - [ ] Build-test the container image (Dockerfile rewritten for the current entry point)
+- [ ] Run posting through an MCP server (the `twitter_server.py` wrapper is disabled)
 - [ ] Cloud deployment templates
 - [ ] Multi-account support
 - [ ] Analytics dashboard
 - [ ] Thread generation support
+
+---
+
+## 📝 Corrections
+
+The following items were corrected on **November 20, 2026** after a check against the code and test suite in this repository. This correction changes documentation only. The code is unchanged.
+
+| Item | Previously stated | Corrected to | Cause |
+|------|-------------------|--------------|-------|
+| Framework name | MCP Agent Cloud framework | mcp-agent framework | MCP Agent Cloud is LastMile's hosted deployment service. This project does not use it. |
+| MCP use | Title and Agent Computer Interface row implied that MCP servers and tools run | No MCP server or tool runs | The `twitter_server.py` wrapper is disabled, and the agents attach no servers. |
+| Badge | MCP Agent Cloud | Built with mcp-agent | The project is not deployed on MCP Agent Cloud. |
+| Cloud deployment | Deploy to LastMile MCP Agent Cloud for automated scheduling | Not set up or tested | No deployment configuration exists in the repository. |
+| Post retries | Retried up to 3 times | Up to 3 attempts in total (2 retries) | `POST_CONNECT_ATTEMPTS = 3` counts attempts, not retries. |
+| Duplicate posts | A tweet cannot be posted twice | The retry rule reduces the risk of a duplicate post | The client skips retries only for failures it classifies as after sending. |
+| Status | Production ready | Personal project configured to run weekly | No evidence supports the label. The scheduler entry is outside the repository. |
+| MCP ecosystem | 100+ MCP servers | Removed | The linked repository does not support the count. |
+| Comparison table | Star ratings for mcp-agent and alternatives | Removed | No benchmark or source supports the ratings. |
+| Insight count | Extracts 7 insights | Asks for 7 and keeps at most 7 | The model can return fewer than 7. |
+| Variations | 4 unique tweet variations | Up to 4 variations, each prompted to use a different insight | Uniqueness has not been measured. |
+| Cloud costs | No cloud costs | No cloud hosting cost; API charges may apply | The project calls the Anthropic and X APIs. |
+| Install time | Installation (5 Minutes) | Installation | X developer access and credential setup can take longer. |
+| Discussions link | Start a discussion | Removed | Discussions are disabled on the repository. |
+| Limitations | No section | New Limitations section | The README had no limitations section. |
+
+The 212 test count, the per file test counts, the model dates and the dependency bounds were rechecked and are accurate. The Dockerfile was reviewed against the current entry point but was not build tested.
 
 ---
 
@@ -830,6 +859,6 @@ If you find this project useful, please consider giving it a star! ⭐
 
 ---
 
-**Built with ❤️ using LastMile AI's MCP Agent Cloud and Claude Sonnet 5.5**
+**Built with LastMile AI's mcp-agent framework and Claude Sonnet 5.5.**
 
 
