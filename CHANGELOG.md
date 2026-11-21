@@ -11,7 +11,7 @@ All notable changes to this project. Dates are in 2026.
 - Added `tzdata` to `requirements.txt`, so `ZoneInfo` can resolve `POSTING_TIMEZONE` on Windows (`--pipeline` previously failed there).
 - Rewrote the `Dockerfile` for the current entry point (Python 3.13, non-root user, state and logs in volumes, no secrets in the image) and added an allowlist `.dockerignore`. The image has not been build tested.
 - Console messages, log lines and docstrings no longer say "MCP Agent Cloud". The app uses LastMile's mcp-agent library locally and runs no MCP server or tool; messages now name mcp-agent or Claude.
-- `QUICK_START_GUIDE.md` and `mcp_agent.secrets.yaml.example` name mcp-agent instead of MCP Agent Cloud. `SECURITY_GUIDE.md` and `TROUBLESHOOTING_GUIDE.md` use placeholder paths (`C:\path	o	weet-processor-mcp-agent`) instead of the author's local folder.
+- `QUICK_START_GUIDE.md` and `mcp_agent.secrets.yaml.example` name mcp-agent instead of MCP Agent Cloud. `SECURITY_GUIDE.md` and `TROUBLESHOOTING_GUIDE.md` use placeholder paths (`C:\path\to\tweet-processor-mcp-agent`) instead of the author's local folder.
 - `run_tweet_processor.bat` closes on its own: `pause` is replaced by `timeout.exe`, so a scheduled run can no longer wait for a keypress.
 
 ### Removed
