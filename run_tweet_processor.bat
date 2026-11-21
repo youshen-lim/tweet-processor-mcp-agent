@@ -38,13 +38,19 @@ if not exist "%PYTHON_EXE%" (
     set PYTHON_EXE=python
 )
 
+REM Never use a bare PAUSE here: Task Scheduler runs this script in a console
+REM (InteractiveToken), so a PAUSE would hold the task open until its time
+REM limit. timeout.exe waits for a key like PAUSE but closes on its own, and
+REM returns at once when there is no console to read from. It is called by full
+REM path so a Unix "timeout" earlier on PATH (e.g. from Git) cannot shadow it.
+
 REM Check if Python is available
 "%PYTHON_EXE%" --version >nul 2>&1
 if errorlevel 1 (
     echo ERROR: Python is not installed or not in PATH
     echo Please install Python 3.9 or higher
     echo.
-    pause
+    "%SystemRoot%\System32\timeout.exe" /t 120
     exit /b 1
 )
 
@@ -57,7 +63,7 @@ if not exist ".env" (
     echo ERROR: .env file not found
     echo Please copy .env.example to .env and configure your API keys
     echo.
-    pause
+    "%SystemRoot%\System32\timeout.exe" /t 120
     exit /b 1
 )
 
@@ -107,10 +113,9 @@ echo.
 REM Log to file
 echo [%date% %time%] Tweet processor executed with exit code %EXIT_CODE% (console: %CONSOLE_LOG%) >> posting_log.txt
 
-REM Always pause to see output (helpful for debugging)
+REM Keep the window open briefly so a manual run's output can be read.
 echo.
-echo Press any key to close this window...
-pause >nul
+"%SystemRoot%\System32\timeout.exe" /t 60
 
 exit /b %EXIT_CODE%
 
